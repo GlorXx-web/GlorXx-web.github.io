@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#09090b">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Iron Log — Трекер тренировок</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: { sans: ["Sora", "sans-serif"] } } }
+  };
+</script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  html, body { height: 100%; overscroll-behavior-y: none; }
+  body {
+    font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    letter-spacing: -0.01em;
+  }
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; }
+
+  .safe-top { padding-top: env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+  @keyframes pop-in { 0% { opacity: 0; transform: translateY(8px) scale(0.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  .anim-pop { animation: pop-in 0.22s ease-out; }
+
+  @keyframes toast-in { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.9); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+  .anim-toast { animation: toast-in 0.25s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes flash-pr { 0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); } 30% { box-shadow: 0 0 0 4px rgba(167,139,250,0.35); } }
+  .flash-pr { animation: flash-pr 1s ease-out; }
+
+  @keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .anim-sheet { animation: sheet-in 0.32s cubic-bezier(.32,.72,0,1); }
+
+  @keyframes num-pulse { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
+  .num-pulse { animation: num-pulse 0.28s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 8px 24px -6px rgba(16,185,129,0.35); }
+    50% { box-shadow: 0 8px 32px -4px rgba(16,185,129,0.55); }
+  }
+  .glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+
+  * { transition-timing-function: cubic-bezier(.22,1,.36,1); }
+
+  .tap { transition: transform 0.22s cubic-bezier(.22,1,.36,1), background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease; will-change: transform; }
+  .tap:active { transform: scale(0.95); transition-duration: 0.08s; }
+
+  #content, main { scroll-behavior: smooth; }
+  .chip-row, .picker-col { scroll-behavior: smooth; }
+
+  .picker-col { height: 176px; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
+  .picker-item { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: #71717a; scroll-snap-align: center; transition: color 0.2s ease, transform 0.2s ease; }
+
+  .nav-pill { transition: background-color 0.3s cubic-bezier(.22,1,.36,1), color 0.25s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1); }
+
+  input[type=range] { height: 8px; border-radius: 999px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #a78bfa; box-shadow: 0 2px 10px rgba(167,139,250,0.5); cursor: pointer; transition: transform 0.15s ease; }
+  input[type=range]::-webkit-slider-thumb:active { transform: scale(1.15); }
+
+  img { transition: opacity 0.25s ease; }
+</style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 h-screen flex flex-col overflow-hidden">
+
+<div id="app" class="flex flex-col h-full">
+  <header id="header" class="safe-top shrink-0 px-4 pt-4 pb-3 bg-zinc-950/95 backdrop-blur border-b border-zinc-900 flex items-center justify-between gap-2"></header>
+  <main id="content" class="flex-1 overflow-y-auto px-4 pb-6"></main>
+
+  <nav id="bottomNav" class="safe-bottom shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur flex relative z-20 px-1.5 py-1">
+    <button data-action="switch-tab" data-tab="workout" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
+      <i data-lucide="dumbbell" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Тренировка</span>
+    </button>
+    <button data-action="switch-tab" data-tab="schedule" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
+      <i data-lucide="calendar-days" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Расписание</span>
+    </button>
+    <button data-action="switch-tab" data-tab="records" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
+      <i data-lucide="trophy" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Рекорды</span>
+    </button>
+    <button data-action="switch-tab" data-tab="photos" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
+      <i data-lucide="image" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Фото</span>
+    </button>
+  </nav>
+
+  <input id="exerciseImageInput" type="file" accept="image/*" class="hidden" />
+  <div id="timerHost"></div>
+  <div id="modalHost"></div>
+  <div id="toastHost" class="pointer-events-none fixed top-4 left-1/2 z-50"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------------
+     Constants & State
+  --------------------------------------------------------------------- */
+  const STORAGE_KEY = "ironlog_v2";
+  const SOUND_KEY = "ironlog_v2_sound";
+  const TIMER_KEY = "ironlog_v2_timer";
+
+  const DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
+  const DAY_FULL = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
+  const MINUTE_VALUES = [0,1,2,3,4,5,6,7,8,9,10];
+  const SECOND_VALUES = [0,5,10,15,20,25,30,35,40,45,50,55];
+  const PICKER_ITEM_H = 44;
+
+  function defaultState(){
+    const schedule = {};
+    DAY_KEYS.forEach(k => schedule[k] = { active: false, exercises: [] });
+    schedule.mon = { active: true, exercises: ["Жим лёжа","Присед","Тяга блока"] };
+    schedule.wed = { active: true, exercises: ["Становая тяга","Жим стоя","Подтягивания"] };
+    schedule.fri = { active: true, exercises: ["Присед","Жим лёжа","Тяга штанги в наклоне"] };
+    return {
+      schedule,
+      exercises: ["Жим лёжа","Присед","Становая тяга","Жим стоя","Тяга блока","Подтягивания","Тяга штанги в наклоне"],
+      sessions: [],
+      photos: [],
+      exerciseImages: {},
+      timerSettings: { defaultSeconds: 90, skipPrompt: false }
+    };
+  }
+
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.schedule && Array.isArray(parsed.sessions)){
+          if (!parsed.exerciseImages) parsed.exerciseImages = {};
+          return parsed;
+        }
+      }
+    } catch(e) {}
+    return defaultState();
+  }
+
+  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  let state = loadState();
+  let timerIntervalId = null;
+  let dragCtx = null;
+
+  let ui = {
+    tab: "workout",
+    workout: { view: "list", activeExercise: null, rpeOpen: false },
+    schedule: { view: "list", activeDay: null },
+    photos: { adding: false, lightboxId: null, draftImage: null, weightDraft: "", dateDraft: "" },
+    chartExercise: null,
+    settingsOpen: false,
+    pickerOpen: false, pickerMinutes: 1, pickerSeconds: 30,
+    pendingImageExercise: null,
+    weight: 20, reps: 5, rpe: 7,
+    soundEnabled: localStorage.getItem(SOUND_KEY) !== "off",
+    timer: { active: false, remaining: 0, total: 0, endsAt: 0, expanded: false }
+  };
+
+  /* ---------------------------------------------------------------------
+     Date / Format Helpers
+  --------------------------------------------------------------------- */
+  function addDays(date, n){ const d = new Date(date); d.setDate(d.getDate()+n); return d; }
+  function dateStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function todayStr(){ return dateStr(new Date()); }
+  function getTodayKey(){ return DAY_KEYS[(new Date().getDay()+6)%7]; }
+  function mondayOf(date){ const d = new Date(date); d.setHours(0,0,0,0); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return d; }
+
+  function fmtDateLabel(ds){
+    const today = todayStr();
+    const yesterday = dateStr(addDays(new Date(), -1));
+    if (ds === today) return "Сегодня";
+    if (ds === yesterday) return "Вчера";
+    const d = new Date(ds + "T00:00:00");
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  }
+
+  function todayLongLabel(){
+    return new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+  }
+
+  function pluralRu(n, one, few, many){
+    const mod10 = n % 10, mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few;
+    return many;
+  }
+
+  function epley(weight, reps){ return weight * (1 + reps/30); }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  function vibrate(ms){ try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) {} }
+
+  function pulse(el){
+    if (!el) return;
+    el.classList.remove("num-pulse");
+    void el.offsetWidth;
+    el.classList.add("num-pulse");
+  }
+
+  /* --------------------------- Sound engine --------------------------- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(freq, duration, type, gain, delay, glideTo){
+    if (!ui.soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const t0 = ctx.currentTime + (delay || 0);
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.setValueAtTime(freq, t0);
+      if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + duration);
+      gainNode.gain.setValueAtTime(0.0001, t0);
+      gainNode.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      osc.connect(gainNode).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.03);
+    } catch(e) {}
+  }
+
+  function sound(name){
+    if (!ui.soundEnabled) return;
+    switch(name){
+      case "tap": playTone(700, 0.045, "sine", 0.07); break;
+      case "step": playTone(520, 0.035, "triangle", 0.08); break;
+      case "select": playTone(640, 0.05, "sine", 0.08); break;
+      case "delete": playTone(260, 0.06, "triangle", 0.08, 0, 150); break;
+      case "log": playTone(320, 0.1, "sine", 0.15, 0, 500); break;
+      case "pr":
+        playTone(523.25, 0.09, "sine", 0.14, 0);
+        playTone(659.25, 0.09, "sine", 0.14, 0.09);
+        playTone(783.99, 0.18, "sine", 0.16, 0.18);
+        break;
+      case "timerDone":
+        playTone(880, 0.15, "sine", 0.16, 0);
+        playTone(1108.73, 0.22, "sine", 0.14, 0.12);
+        break;
+    }
+  }
+
+  function toggleAppSound(){
+    ui.soundEnabled = !ui.soundEnabled;
+    localStorage.setItem(SOUND_KEY, ui.soundEnabled ? "on" : "off");
+    if (ui.soundEnabled) sound("tap");
+    renderSettingsModal();
+  }
+
+  /* ---------------------------------------------------------------------
+     Workout Data Helpers
+  --------------------------------------------------------------------- */
+  function getSession(ds, create){
+    let s = state.sessions.find(x => x.date === ds);
+    if (!s && create){ s = { id: uid(), date: ds, sets: [] }; state.sessions.push(s); }
+    return s;
+  }
+
+  function allSets(){
+    const out = [];
+    for (const s of state.sessions) for (const st of s.sets) out.push({ ...st, date: s.date, sessionId: s.id });
+    return out;
+  }
+
+  function allLoggedExerciseNames(){
+    const set = new Set();
+    allSets().forEach(s => set.add(s.exercise));
+    return [...set];
+  }
+
+  function bestFor(exercise){
+    const sets = allSets().filter(s => s.exercise === exercise);
+    if (!sets.length) return null;
+    let maxWeight = sets[0], maxEpley = sets[0], maxEpleyVal = epley(sets[0].weight, sets[0].reps);
+    for (const s of sets){
+      if (s.weight > maxWeight.weight) maxWeight = s;
+      const e = epley(s.weight, s.reps);
+      if (e > maxEpleyVal){ maxEpleyVal = e; maxEpley = s; }
+    }
+    return { maxWeight, maxEpley, maxEpleyVal };
+  }
+
+  function lastSetFor(exercise){
+    const sets = allSets().filter(s => s.exercise === exercise).sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+    return sets[0] || null;
+  }
+
+  function computeStreak(){
+    let weeks = 0;
+    let cursorMonday = addDays(mondayOf(new Date()), -7);
+    let guard = 0;
+    while (guard++ < 260){
+      const weekDays = [0,1,2,3,4,5,6].map(i => addDays(cursorMonday, i));
+      let hasActive = false, complete = true;
+      for (let i=0;i<7;i++){
+        if (state.schedule[DAY_KEYS[i]].active){
+          hasActive = true;
+          const ds = dateStr(weekDays[i]);
+          const session = state.sessions.find(s => s.date === ds);
+          if (!session || session.sets.length === 0){ complete = false; break; }
+        }
+      }
+      if (hasActive && !complete) break;
+      if (hasActive && complete) weeks++;
+      cursorMonday = addDays(cursorMonday, -7);
+    }
+    return weeks;
+  }
+
+  function rpeHint(v){
+    v = parseFloat(v);
+    if (v >= 10) return "Отказ — больше ни одного повторения";
+    if (v >= 9) return "Остался 1 повтор в запасе";
+    if (v >= 8) return "Остались 2 повтора в запасе";
+    if (v >= 7) return "Остались 2-3 повтора в запасе";
+    if (v >= 5) return "Умеренно, есть запас";
+    return "Легко";
+  }
+
+  /* ---------------------------------------------------------------------
+     Small UI Components
+  --------------------------------------------------------------------- */
+  function toggleSwitchHtml(checked, action, extraAttrs){
+    return `<button data-action="${action}" ${extraAttrs||""} class="tap relative w-16 h-9 rounded-full shrink-0 ${checked ? "bg-emerald-500" : "bg-zinc-700"}">
+      <span class="absolute top-0.5 ${checked ? "left-[34px]" : "left-0.5"} w-8 h-8 bg-white rounded-full shadow-lg transition-all duration-300"></span>
+    </button>`;
+  }
+
+  function backButtonHtml(){
+    return `<button data-action="nav-back" class="tap w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-zinc-300 shrink-0 active:bg-zinc-900"><i data-lucide="chevron-left" class="w-7 h-7"></i></button>`;
+  }
+
+  function streakBadgeHtml(){
+    const weeks = computeStreak();
+    if (weeks <= 0) return "";
+    return `<div class="flex items-center gap-1.5 bg-gradient-to-r from-orange-500/20 to-amber-500/10 border border-orange-500/30 px-3 py-1.5 rounded-full">
+      <span class="text-lg leading-none">🔥</span><span class="text-sm font-bold text-orange-400">${weeks}</span>
+    </div>`;
+  }
+
+  let toastTimer = null;
+  function showToast(message, type){
+    const host = document.getElementById("toastHost");
+    const isPR = type === "pr";
+    host.innerHTML = `
+      <div class="anim-toast pointer-events-auto -translate-x-1/2 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl border text-sm font-semibold whitespace-nowrap
+        ${isPR ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 border-violet-400/40 text-white" : "bg-zinc-800 border-zinc-700 text-zinc-200"}">
+        <i data-lucide="${isPR ? "trophy" : "info"}" class="w-4 h-4 ${isPR ? "text-amber-300" : "text-zinc-400"} shrink-0"></i>
+        <span>${escapeHtml(message)}</span>
+      </div>`;
+    lucide.createIcons();
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { host.innerHTML = ""; }, 2600);
+  }
+
+  /* ---------------------------------------------------------------------
+     Render: Dispatch, Header, Nav
+  --------------------------------------------------------------------- */
+  function render(){
+    renderHeader();
+    if (ui.tab === "workout") (ui.workout.view === "logging" ? renderWorkoutLogging : renderWorkoutList)();
+    else if (ui.tab === "schedule") (ui.schedule.view === "day" ? renderScheduleDay : renderScheduleList)();
+    else if (ui.tab === "records") renderRecords();
+    else renderPhotos();
+    renderNav();
+    lucide.createIcons();
+  }
+
+  function renderNav(){
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+      const active = btn.dataset.tab === ui.tab;
+      btn.className = "nav-btn nav-pill tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl " +
+        (active ? "text-emerald-400 bg-emerald-500/10 scale-[1.02]" : "text-zinc-500 bg-transparent");
+    });
+  }
+
+  function renderHeader(){
+    const el = document.getElementById("header");
+    let left = "", title, right = "";
+
+    if (ui.tab === "workout"){
+      if (ui.workout.view === "logging"){
+        left = backButtonHtml();
+        title = `<div class="font-bold text-white truncate max-w-[180px]">${escapeHtml(ui.workout.activeExercise)}</div>`;
+      } else {
+        title = `<div><div class="font-bold text-white text-lg leading-tight">Моя тренировка</div><div class="text-xs text-zinc-500">${todayLongLabel()}</div></div>`;
+        right = streakBadgeHtml();
+      }
+    } else if (ui.tab === "schedule"){
+      if (ui.schedule.view === "day"){
+        left = backButtonHtml();
+        title = `<div class="font-bold text-white">${DAY_FULL[DAY_KEYS.indexOf(ui.schedule.activeDay)]}</div>`;
+      } else title = `<div class="font-bold text-white text-lg">Расписание</div>`;
+    } else if (ui.tab === "records"){
+      title = `<div class="font-bold text-white text-lg">Рекорды</div>`;
+    } else {
+      title = `<div class="font-bold text-white text-lg">Фото-прогресс</div>`;
+    }
+
+    el.innerHTML = `
+      <div class="flex items-center gap-1 min-w-0">${left}${title}</div>
+      <div class="flex items-center gap-2 shrink-0">
+        ${right}
+        <button data-action="open-settings" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="settings" class="w-5 h-5"></i></button>
+      </div>`;
+  }
+
+  /* ---------------------------------------------------------------------
+     Actions: Navigation
+  --------------------------------------------------------------------- */
+  function switchTab(tab){
+    if (tab === ui.tab){
+      if (tab === "workout" && ui.workout.view !== "list"){ workoutBack(); return; }
+      if (tab === "schedule" && ui.schedule.view !== "list"){ scheduleBack(); return; }
+      return;
+    }
+    sound("tap");
+    ui.tab = tab;
+    ui.workout.view = "list";
+    ui.schedule.view = "list";
+    render();
+  }
+
+  function navBack(){
+    if (ui.tab === "workout") workoutBack();
+    else if (ui.tab === "schedule") scheduleBack();
+  }
+
+  function gotoTodaySchedule(){
+    ui.tab = "schedule"; ui.schedule.view = "day"; ui.schedule.activeDay = getTodayKey();
+    render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Workout Tab
+  --------------------------------------------------------------------- */
+  function renderWorkoutList(){
+    const todayKey = getTodayKey();
+    const day = state.schedule[todayKey];
+    const content = document.getElementById("content");
+
+    if (!day.active){
+      content.innerHTML = `
+        <div class="flex flex-col items-center justify-center text-center py-24 px-6">
+          <div class="w-20 h-20 rounded-full bg-zinc-900 flex items-center justify-center mb-5">
+            <i data-lucide="moon" class="w-9 h-9 text-violet-400"></i>
+          </div>
+          <div class="text-xl font-bold text-zinc-100 mb-1.5">Сегодня тренировки нет</div>
+          <div class="text-zinc-500">Отдыхай! 💤</div>
+        </div>`;
+      return;
+    }
+    if (!day.exercises.length){
+      content.innerHTML = `
+        <div class="flex flex-col items-center justify-center text-center py-24 px-6">
+          <i data-lucide="list-plus" class="w-10 h-10 text-zinc-700 mb-4"></i>
+          <div class="text-zinc-400 mb-4">На сегодня ещё нет упражнений</div>
+          <button data-action="goto-today-schedule" class="tap px-6 py-3.5 rounded-full bg-emerald-500 text-zinc-950 font-bold active:bg-emerald-400">Настроить расписание</button>
+        </div>`;
+      return;
+    }
+
+    const today = getSession(todayStr(), false);
+    const rows = day.exercises.map((ex, i) => {
+      const setsCount = today ? today.sets.filter(s => s.exercise === ex).length : 0;
+      const best = bestFor(ex);
+      const subtitle = setsCount
+        ? setsCount + " " + pluralRu(setsCount, "подход", "подхода", "подходов") + " сегодня"
+        : (best ? "Лучший: " + best.maxWeight.weight + "кг × " + best.maxWeight.reps : "Ещё нет данных");
+      const img = state.exerciseImages[ex];
+      const thumb = img
+        ? `<img src="${img}" class="w-14 h-14 rounded-2xl object-cover shrink-0" />`
+        : `<div class="w-14 h-14 rounded-2xl bg-zinc-800 flex items-center justify-center shrink-0"><i data-lucide="dumbbell" class="w-6 h-6 text-zinc-700"></i></div>`;
+      return `
+      <div data-drag-item data-index="${i}" class="anim-pop flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-3xl pl-2 pr-3 py-2.5 mb-3">
+        <div data-drag-handle data-context="workout" class="tap w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-zinc-600 touch-none active:bg-zinc-800"><i data-lucide="grip-vertical" class="w-6 h-6"></i></div>
+        <button data-action="open-exercise" data-exercise="${escapeHtml(ex)}" class="tap flex-1 min-w-0 flex items-center gap-3 justify-between text-left py-1">
+          <div class="flex items-center gap-3 min-w-0">
+            ${thumb}
+            <div class="min-w-0">
+              <div class="font-bold text-zinc-100 truncate text-[15px]">${escapeHtml(ex)}</div>
+              <div class="text-xs text-zinc-500 truncate mt-0.5">${subtitle}</div>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-6 h-6 text-zinc-600 shrink-0"></i>
+        </button>
+      </div>`;
+    }).join("");
+
+    content.innerHTML = `<div class="pt-2 drag-list">${rows}</div>`;
+  }
+
+  function openExercise(ex){
+    sound("select");
+    ui.workout.activeExercise = ex;
+    ui.workout.view = "logging";
+    ui.workout.rpeOpen = false;
+    const last = lastSetFor(ex);
+    ui.weight = last ? last.weight : 20;
+    ui.reps = last ? last.reps : 5;
+    ui.rpe = (last && last.rpe != null) ? last.rpe : 7;
+    render();
+  }
+
+  function workoutBack(){ ui.workout.view = "list"; ui.workout.activeExercise = null; render(); }
+
+  function renderWorkoutLogging(){
+    const ex = ui.workout.activeExercise;
+    const today = getSession(todayStr(), false);
+    const setsToday = today ? today.sets.filter(s => s.exercise === ex) : [];
+    const content = document.getElementById("content");
+    const img = state.exerciseImages[ex];
+
+    const heroHtml = `
+      <button data-action="pick-exercise-image" data-exercise="${escapeHtml(ex)}" class="tap relative w-full aspect-[16/9] rounded-3xl overflow-hidden mb-4 bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+        ${img ? `<img src="${img}" class="w-full h-full object-cover" />` : `<div class="flex flex-col items-center text-zinc-600"><i data-lucide="image-plus" class="w-8 h-8 mb-1.5"></i><span class="text-xs font-semibold">Добавить фото упражнения</span></div>`}
+        ${img ? `<div class="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center"><i data-lucide="pencil" class="w-4 h-4 text-white"></i></div>` : ""}
+      </button>`;
+
+    const setsListHtml = setsToday.length ? `<div class="space-y-2.5 mb-4">` + setsToday.map((s,i) => {
+      const e1 = epley(s.weight, s.reps);
+      const badge = (s.isWeightPR || s.isEpleyPR) ? `<span class="text-amber-400 text-xs font-bold flex items-center gap-0.5 shrink-0"><i data-lucide="trophy" class="w-3.5 h-3.5"></i>PR</span>` : "";
+      const rpeTag = (s.rpe != null) ? `<span class="text-[11px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded-md shrink-0">RPE ${s.rpe}</span>` : "";
+      return `<div class="anim-pop flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 ${(s.isWeightPR||s.isEpleyPR)?'flash-pr border-violet-500/40':''}">
+        <div class="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><i data-lucide="check" class="w-5 h-5"></i></div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-zinc-100 flex items-center gap-2 flex-wrap">Сет ${i+1} · <span class="text-zinc-300">${s.weight}кг × ${s.reps}</span> ${rpeTag}</div>
+          <div class="text-xs text-zinc-500 mt-0.5">~1ПМ ${e1.toFixed(1)}кг</div>
+        </div>
+        ${badge}
+        <button data-action="delete-set" data-session="${today.id}" data-set="${s.id}" class="tap w-9 h-9 rounded-full text-zinc-600 active:text-red-400 active:bg-red-500/10 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>`;
+    }).join("") + `</div>` : `<div class="text-center text-zinc-600 text-sm py-6">Пока нет подходов сегодня</div>`;
+
+    const rpeSection = ui.workout.rpeOpen ? `
+      <div class="anim-pop pt-1">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500">RPE (СЛОЖНОСТЬ)</div>
+          <div class="text-xl font-extrabold text-violet-300" id="rpeValueLabel">${ui.rpe}</div>
+        </div>
+        <input id="rpeSlider" data-field="rpe" type="range" min="1" max="10" step="0.5" value="${ui.rpe}" class="w-full accent-violet-500" />
+        <div class="text-xs text-zinc-500 mt-1.5" id="rpeHint">${rpeHint(ui.rpe)}</div>
+      </div>` : `
+      <button data-action="toggle-rpe" class="tap text-sm font-bold text-zinc-500 flex items-center gap-1.5 py-2 active:text-zinc-300"><i data-lucide="plus-circle" class="w-[18px] h-[18px]"></i> Добавить RPE</button>`;
+
+    content.innerHTML = `
+      ${heroHtml}
+      ${setsListHtml}
+      <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">ВЕС (КГ)</div>
+          <div class="flex items-center gap-3">
+            <button data-action="step-weight" data-delta="-2.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="weightInput" data-field="weight" type="number" inputmode="decimal" step="2.5" value="${ui.weight}" class="flex-1 min-w-0 w-0 text-center bg-transparent text-5xl font-extrabold text-white outline-none" />
+            <button data-action="step-weight" data-delta="2.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+          </div>
+        </div>
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">ПОВТОРЕНИЯ</div>
+          <div class="flex items-center gap-3">
+            <button data-action="step-reps" data-delta="-1" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="repsInput" data-field="reps" type="number" inputmode="numeric" step="1" value="${ui.reps}" class="flex-1 min-w-0 w-0 text-center bg-transparent text-5xl font-extrabold text-white outline-none" />
+            <button data-action="step-reps" data-delta="1" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+          </div>
+        </div>
+        ${rpeSection}
+        <button data-action="log-set" class="tap glow-pulse w-full py-5 rounded-[28px] bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-xl font-extrabold flex items-center justify-center gap-2">
+          <i data-lucide="check-circle-2" class="w-7 h-7"></i> ЗАВЕРШИТЬ ПОДХОД
+        </button>
+      </div>`;
+  }
+
+  function stepWeight(delta){
+    const input = document.getElementById("weightInput");
+    let v = parseFloat(input.value) || 0;
+    v = Math.max(0, Math.round((v + delta) * 100) / 100);
+    input.value = v; ui.weight = v;
+    pulse(input); sound("step"); vibrate(8);
+  }
+
+  function stepReps(delta){
+    const input = document.getElementById("repsInput");
+    let v = parseInt(input.value) || 0;
+    v = Math.max(0, v + delta);
+    input.value = v; ui.reps = v;
+    pulse(input); sound("step"); vibrate(8);
+  }
+
+  function logSet(){
+    const ex = ui.workout.activeExercise;
+    if (!ex) return;
+    const weight = parseFloat(document.getElementById("weightInput").value) || 0;
+    const reps = parseInt(document.getElementById("repsInput").value) || 0;
+    if (weight <= 0 || reps <= 0){ showToast("Введите вес и повторения", "warn"); return; }
+
+    const prevBest = bestFor(ex);
+    const newEpley = epley(weight, reps);
+    const isWeightPR = !prevBest || weight > prevBest.maxWeight.weight;
+    const isEpleyPR = !prevBest || newEpley > prevBest.maxEpleyVal;
+
+    const session = getSession(todayStr(), true);
+    session.sets.push({
+      id: uid(), exercise: ex, weight, reps,
+      rpe: ui.workout.rpeOpen ? ui.rpe : null,
+      time: new Date().toTimeString().slice(0,8),
+      isWeightPR, isEpleyPR
+    });
+    saveState();
+    vibrate(isWeightPR||isEpleyPR ? [15,40,15] : 15);
+    sound(isWeightPR||isEpleyPR ? "pr" : "log");
+    render();
+
+    if (isWeightPR && isEpleyPR) showToast("Новый рекорд! " + weight + "кг × " + reps + " · ~1ПМ " + newEpley.toFixed(1) + "кг", "pr");
+    else if (isWeightPR) showToast("Новый рекорд по весу: " + weight + "кг!", "pr");
+    else if (isEpleyPR) showToast("Новый расчётный 1ПМ: " + newEpley.toFixed(1) + "кг!", "pr");
+
+    if (state.timerSettings.skipPrompt) startRestTimer(state.timerSettings.defaultSeconds);
+    else openTimerPicker();
+  }
+
+  function deleteSet(sessionId, setId){
+    const session = state.sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    session.sets = session.sets.filter(s => s.id !== setId);
+    if (session.sets.length === 0) state.sessions = state.sessions.filter(s => s.id !== sessionId);
+    saveState(); sound("delete"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Schedule Tab
+  --------------------------------------------------------------------- */
+  function renderScheduleList(){
+    const content = document.getElementById("content");
+    const rows = DAY_KEYS.map((key, i) => {
+      const day = state.schedule[key];
+      const count = day.exercises.length;
+      return `
+      <div data-action="open-day" data-day="${key}" class="tap w-full flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-2.5 cursor-pointer">
+        <div>
+          <div class="font-bold text-zinc-100 text-[15px]">${DAY_FULL[i]}</div>
+          <div class="text-xs text-zinc-500 mt-0.5">${day.active ? (count + " " + pluralRu(count,"упражнение","упражнения","упражнений")) : "День отдыха"}</div>
+        </div>
+        <div class="flex items-center gap-3.5">
+          ${toggleSwitchHtml(day.active, "toggle-day-active", `data-day="${key}"`)}
+          <i data-lucide="chevron-right" class="w-6 h-6 text-zinc-600"></i>
+        </div>
+      </div>`;
+    }).join("");
+    content.innerHTML = `<div class="pt-2">${rows}</div>`;
+  }
+
+  function openDay(key){ sound("select"); ui.schedule.activeDay = key; ui.schedule.view = "day"; render(); }
+  function scheduleBack(){ ui.schedule.view = "list"; ui.schedule.activeDay = null; render(); }
+
+  function toggleDayActive(dayKey){
+    sound("tap");
+    state.schedule[dayKey].active = !state.schedule[dayKey].active;
+    saveState(); render();
+  }
+
+  function renderScheduleDay(){
+    const key = ui.schedule.activeDay;
+    const day = state.schedule[key];
+    const content = document.getElementById("content");
+
+    const toggleRow = `
+      <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 mb-4">
+        <div class="font-bold text-zinc-100">Тренировочный день</div>
+        ${toggleSwitchHtml(day.active, "toggle-day-active", `data-day="${key}"`)}
+      </div>`;
+
+    if (!day.active){
+      content.innerHTML = toggleRow + `<div class="text-center text-zinc-600 text-sm py-10">День отдыха. Включите переключатель, чтобы добавить упражнения.</div>`;
+      return;
+    }
+
+    const rows = day.exercises.map((ex, i) => {
+      const img = state.exerciseImages[ex];
+      const thumb = img
+        ? `<img src="${img}" class="w-12 h-12 rounded-xl object-cover shrink-0" />`
+        : `<div class="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0"><i data-lucide="image-plus" class="w-5 h-5 text-zinc-600"></i></div>`;
+      return `
+      <div data-drag-item data-index="${i}" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-2xl pl-2 pr-2.5 py-2.5 mb-2.5">
+        <div data-drag-handle data-context="schedule" class="tap w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-zinc-600 touch-none active:bg-zinc-800"><i data-lucide="grip-vertical" class="w-6 h-6"></i></div>
+        <button data-action="pick-exercise-image" data-exercise="${escapeHtml(ex)}" class="tap shrink-0">${thumb}</button>
+        <div class="flex-1 font-semibold text-zinc-200 truncate px-1">${escapeHtml(ex)}</div>
+        <button data-action="remove-day-exercise" data-day="${key}" data-index="${i}" class="tap w-10 h-10 rounded-full text-zinc-600 active:text-red-400 active:bg-red-500/10 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>`;
+    }).join("");
+
+    const rowsHtml = day.exercises.length ? `<div class="drag-list">${rows}</div>` : `<div class="text-center text-zinc-600 text-sm py-6">Пока нет упражнений</div>`;
+
+    const addForm = `
+      <div class="flex items-center gap-2 mt-3">
+        <input id="newDayExerciseInput" data-field="new-day-exercise" type="text" placeholder="Название упражнения" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" list="knownExercisesList" />
+        <button data-action="add-day-exercise" data-day="${key}" class="tap w-14 h-14 shrink-0 rounded-2xl bg-emerald-500 text-zinc-950 flex items-center justify-center active:bg-emerald-400"><i data-lucide="plus" class="w-6 h-6"></i></button>
+      </div>
+      <datalist id="knownExercisesList">${state.exercises.map(e => `<option value="${escapeHtml(e)}"></option>`).join("")}</datalist>`;
+
+    content.innerHTML = toggleRow + rowsHtml + addForm;
+  }
+
+  function addDayExercise(dayKey){
+    const input = document.getElementById("newDayExerciseInput");
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) return;
+    if (!state.schedule[dayKey].exercises.includes(name)) state.schedule[dayKey].exercises.push(name);
+    if (!state.exercises.includes(name)) state.exercises.push(name);
+    saveState(); sound("select"); render();
+    requestAnimationFrame(() => { const el = document.getElementById("newDayExerciseInput"); if (el) el.focus(); });
+  }
+
+  function removeDayExercise(dayKey, index){
+    state.schedule[dayKey].exercises.splice(index, 1);
+    saveState(); sound("delete"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Drag & Drop Reordering
+  --------------------------------------------------------------------- */
+  function startDrag(e, handle){
+    const context = handle.dataset.context;
+    let listRef, commit;
+    if (context === "workout"){
+      const key = getTodayKey();
+      listRef = state.schedule[key].exercises;
+      commit = (order) => { state.schedule[key].exercises = order; saveState(); render(); };
+    } else if (context === "schedule"){
+      const key = ui.schedule.activeDay;
+      listRef = state.schedule[key].exercises;
+      commit = (order) => { state.schedule[key].exercises = order; saveState(); render(); };
+    } else return;
+
+    const item = handle.closest("[data-drag-item]");
+    const container = item.closest(".drag-list");
+    if (!container) return;
+    const items = Array.from(container.querySelectorAll("[data-drag-item]"));
+    const startIndex = items.indexOf(item);
+    const rect = item.getBoundingClientRect();
+    const style = getComputedStyle(item);
+    const marginBottom = parseFloat(style.marginBottom) || 0;
+    const itemHeight = rect.height + marginBottom;
+
+    dragCtx = { items, startIndex, currentIndex: startIndex, item, itemHeight, startY: e.clientY, listRef, commit };
+    item.style.position = "relative";
+    item.style.zIndex = "30";
+    item.style.transition = "none";
+    item.classList.add("shadow-2xl","ring-1","ring-emerald-500/40");
+    vibrate(10);
+
+    const move = (ev) => onDragMove(ev);
+    const up = () => { onDragEnd(); document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  }
+
+  function onDragMove(e){
+    if (!dragCtx) return;
+    const dy = e.clientY - dragCtx.startY;
+    dragCtx.item.style.transform = `translateY(${dy}px)`;
+    const rawIndex = dragCtx.startIndex + Math.round(dy / dragCtx.itemHeight);
+    const newIndex = Math.max(0, Math.min(dragCtx.items.length - 1, rawIndex));
+    if (newIndex !== dragCtx.currentIndex){
+      dragCtx.currentIndex = newIndex;
+      dragCtx.items.forEach((el, i) => {
+        if (el === dragCtx.item) return;
+        let shift = 0;
+        if (dragCtx.currentIndex > dragCtx.startIndex){
+          if (i > dragCtx.startIndex && i <= dragCtx.currentIndex) shift = -dragCtx.itemHeight;
+        } else if (dragCtx.currentIndex < dragCtx.startIndex){
+          if (i >= dragCtx.currentIndex && i < dragCtx.startIndex) shift = dragCtx.itemHeight;
+        }
+        el.style.transition = "transform 0.18s cubic-bezier(.2,.8,.2,1)";
+        el.style.transform = shift ? `translateY(${shift}px)` : "";
+      });
+    }
+  }
+
+  function onDragEnd(){
+    if (!dragCtx) return;
+    const { items, startIndex, currentIndex, listRef, commit } = dragCtx;
+    const reordered = [...listRef];
+    const [moved] = reordered.splice(startIndex, 1);
+    reordered.splice(currentIndex, 0, moved);
+    items.forEach(el => {
+      el.style.transition = ""; el.style.transform = ""; el.style.zIndex = ""; el.style.position = "";
+      el.classList.remove("shadow-2xl","ring-1","ring-emerald-500/40");
+    });
+    if (currentIndex !== startIndex){ sound("select"); vibrate(15); }
+    dragCtx = null;
+    commit(reordered);
+  }
+
+  /* ---------------------------------------------------------------------
+     Records Tab
+  --------------------------------------------------------------------- */
+  function renderRecords(){
+    const names = allLoggedExerciseNames();
+    const content = document.getElementById("content");
+    if (!names.length){
+      content.innerHTML = `<div class="text-center py-20 text-zinc-600"><i data-lucide="trophy" class="w-10 h-10 mx-auto mb-3 opacity-40"></i><div class="text-sm">Логируйте подходы, чтобы увидеть рекорды</div></div>`;
+      return;
+    }
+    const cards = names.map(ex => {
+      const b = bestFor(ex);
+      return `
+      <div class="anim-pop bg-gradient-to-br from-zinc-900 to-zinc-900/60 border border-violet-500/20 rounded-3xl p-4 mb-3">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0"><i data-lucide="trophy" class="w-5 h-5"></i></div>
+            <div class="font-bold text-zinc-100 truncate">${escapeHtml(ex)}</div>
+          </div>
+          <button data-action="open-chart" data-exercise="${escapeHtml(ex)}" class="tap w-11 h-11 rounded-full bg-zinc-800 text-emerald-400 flex items-center justify-center shrink-0 active:bg-zinc-700"><i data-lucide="trending-up" class="w-5 h-5"></i></button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-zinc-950/60 rounded-2xl p-3">
+            <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1">МАКС. ВЕС</div>
+            <div class="text-xl font-extrabold text-white">${b.maxWeight.weight}<span class="text-sm text-zinc-500 font-semibold">кг</span></div>
+            <div class="text-xs text-zinc-500">${b.maxWeight.reps} повт. · ${fmtDateLabel(b.maxWeight.date)}</div>
+          </div>
+          <div class="bg-zinc-950/60 rounded-2xl p-3">
+            <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1">~1ПМ</div>
+            <div class="text-xl font-extrabold text-violet-300">${b.maxEpleyVal.toFixed(1)}<span class="text-sm text-zinc-500 font-semibold">кг</span></div>
+            <div class="text-xs text-zinc-500">${b.maxEpley.weight}кг × ${b.maxEpley.reps} · ${fmtDateLabel(b.maxEpley.date)}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    content.innerHTML = `<div class="pt-4">${cards}</div>`;
+  }
+
+  function buildProgressChartSvg(exercise){
+    const sets = allSets().filter(s => s.exercise === exercise).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    const byDate = {};
+    sets.forEach(s => {
+      const e1 = epley(s.weight, s.reps);
+      if (!byDate[s.date] || e1 > byDate[s.date]) byDate[s.date] = e1;
+    });
+    const points = Object.entries(byDate).sort((a,b) => a[0].localeCompare(b[0])).map(([date,val]) => ({ date, val }));
+    if (!points.length) return `<div class="text-center text-zinc-600 text-sm py-10">Недостаточно данных</div>`;
+
+    const W = 320, H = 160, padX = 14, padY = 16;
+    const vals = points.map(p => p.val);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = (max - min) || 1;
+    const stepX = points.length > 1 ? (W - padX*2) / (points.length - 1) : 0;
+    const coords = points.map((p,i) => ({
+      x: padX + i*stepX,
+      y: H - padY - ((p.val - min) / range) * (H - padY*2),
+      ...p
+    }));
+    const pathD = coords.map((c,i) => (i===0?"M":"L") + c.x.toFixed(1) + "," + c.y.toFixed(1)).join(" ");
+    const areaD = pathD + ` L${coords[coords.length-1].x.toFixed(1)},${H-padY} L${coords[0].x.toFixed(1)},${H-padY} Z`;
+    const dots = coords.map(c => `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#34d399" stroke="#09090b" stroke-width="1.5"><title>${fmtDateLabel(c.date)}: ${c.val.toFixed(1)}кг</title></circle>`).join("");
+    const gradId = "chartGrad_" + Math.random().toString(36).slice(2,8);
+
+    return `
+    <svg viewBox="0 0 ${W} ${H}" class="w-full h-40">
+      <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#34d399" stop-opacity="0.35"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="${areaD}" fill="url(#${gradId})" />
+      <path d="${pathD}" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      ${dots}
+    </svg>
+    <div class="flex justify-between text-[10px] text-zinc-600 mt-1 px-1"><span>${fmtDateLabel(points[0].date)}</span><span>${fmtDateLabel(points[points.length-1].date)}</span></div>`;
+  }
+
+  function openChart(ex){ sound("tap"); ui.chartExercise = ex; renderChartModal(); }
+  function closeChart(){ ui.chartExercise = null; document.getElementById("modalHost").innerHTML = ""; }
+  function renderChartModal(){
+    const host = document.getElementById("modalHost");
+    const ex = ui.chartExercise;
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-chart" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-bold text-lg text-zinc-100">${escapeHtml(ex)}</div>
+          <button data-action="close-chart" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="text-xs font-bold tracking-wider text-zinc-500 mb-2">ПРОГРЕСС ~1ПМ</div>
+        ${buildProgressChartSvg(ex)}
+      </div>
+    </div>`;
+    lucide.createIcons();
+  }
+
+  /* ---------------------------------------------------------------------
+     Photos Tab
+  --------------------------------------------------------------------- */
+  function renderPhotos(){
+    const content = document.getElementById("content");
+    const photos = [...state.photos].sort((a,b) => b.date.localeCompare(a.date));
+    const addBtn = `
+      <button data-action="open-add-photo" class="tap w-full flex items-center justify-center gap-2.5 border-2 border-dashed border-zinc-800 rounded-3xl py-7 mb-4 text-zinc-400 font-bold text-[15px] active:bg-zinc-900/50">
+        <i data-lucide="image-plus" class="w-6 h-6"></i> Добавить фото-запись
+      </button>`;
+    if (!photos.length){
+      content.innerHTML = addBtn + `<div class="text-center text-zinc-600 text-sm py-10">Начните вести фото-дневник прогресса</div>`;
+      return;
+    }
+    const grid = photos.map(p => `
+      <button data-action="open-lightbox" data-id="${p.id}" class="tap relative aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900">
+        <img src="${p.image}" class="w-full h-full object-cover" />
+        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6 text-left">
+          <div class="text-white font-bold text-sm">${p.weightKg}кг</div>
+          <div class="text-zinc-300 text-[11px]">${fmtDateLabel(p.date)}</div>
+        </div>
+      </button>`).join("");
+    content.innerHTML = addBtn + `<div class="grid grid-cols-2 gap-3">${grid}</div>`;
+  }
+
+  function openAddPhoto(){
+    sound("tap");
+    ui.photos.adding = true;
+    ui.photos.draftImage = null;
+    ui.photos.weightDraft = "";
+    ui.photos.dateDraft = todayStr();
+    renderAddPhotoModal();
+  }
+  function closeAddPhoto(){ ui.photos.adding = false; document.getElementById("modalHost").innerHTML = ""; }
+
+  function renderAddPhotoModal(){
+    const host = document.getElementById("modalHost");
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-add-photo" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-lg text-zinc-100">Новая запись</div>
+          <button data-action="close-add-photo" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <label class="block cursor-pointer">
+          <div class="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-zinc-800 flex items-center justify-center overflow-hidden bg-zinc-900 relative">
+            ${ui.photos.draftImage ? `<img src="${ui.photos.draftImage}" class="w-full h-full object-cover" />` : `<div class="text-center text-zinc-600"><i data-lucide="image-plus" class="w-9 h-9 mx-auto mb-2"></i><div class="text-sm font-semibold">Выбрать фото</div></div>`}
+          </div>
+          <input id="photoFileInput" data-field="photo-file" type="file" accept="image/*" class="hidden" />
+        </label>
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">ВЕС (КГ)</div>
+          <input id="photoWeightInput" data-field="photo-weight" type="number" inputmode="decimal" step="0.1" value="${ui.photos.weightDraft}" placeholder="0" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-xl font-bold text-white outline-none focus:border-emerald-500/50" />
+        </div>
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">ДАТА</div>
+          <input id="photoDateInput" data-field="photo-date" type="date" value="${ui.photos.dateDraft}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-lg text-white outline-none focus:border-emerald-500/50" />
+        </div>
+        <button data-action="save-photo" class="tap w-full py-5 rounded-[24px] bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-xl font-extrabold">Сохранить</button>
+      </div>
+    </div>`;
+    lucide.createIcons();
+  }
+
+  function pickExerciseImage(ex){
+    sound("tap");
+    ui.pendingImageExercise = ex;
+    const input = document.getElementById("exerciseImageInput");
+    if (input) input.click();
+  }
+
+  function compressImage(file, maxDim, quality){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > height && width > maxDim){ height = Math.round(height * maxDim/width); width = maxDim; }
+          else if (height >= width && height > maxDim){ width = Math.round(width * maxDim/height); height = maxDim; }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function savePhoto(){
+    const weight = parseFloat(document.getElementById("photoWeightInput").value) || 0;
+    const date = document.getElementById("photoDateInput").value || todayStr();
+    if (!ui.photos.draftImage){ showToast("Выберите фото", "warn"); return; }
+    if (weight <= 0){ showToast("Введите вес", "warn"); return; }
+    state.photos.push({ id: uid(), date, weightKg: weight, image: ui.photos.draftImage });
+    saveState(); sound("log");
+    closeAddPhoto(); renderPhotos(); lucide.createIcons();
+  }
+
+  function openLightbox(id){ sound("tap"); ui.photos.lightboxId = id; renderLightbox(); }
+  function closeLightbox(){ ui.photos.lightboxId = null; document.getElementById("modalHost").innerHTML = ""; }
+  function renderLightbox(){
+    const p = state.photos.find(x => x.id === ui.photos.lightboxId);
+    if (!p) return;
+    const host = document.getElementById("modalHost");
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 bg-black/95 flex flex-col">
+      <div class="flex items-center justify-between p-4 safe-top">
+        <div><div class="text-white font-bold">${p.weightKg}кг</div><div class="text-zinc-400 text-xs">${fmtDateLabel(p.date)}</div></div>
+        <div class="flex items-center gap-2">
+          <button data-action="delete-photo" data-id="${p.id}" class="tap w-11 h-11 rounded-full bg-zinc-900 text-red-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+          <button data-action="close-lightbox" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-300 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+      <div class="flex-1 flex items-center justify-center p-4"><img src="${p.image}" class="max-w-full max-h-full object-contain rounded-2xl" /></div>
+    </div>`;
+    lucide.createIcons();
+  }
+  function deletePhoto(id){
+    if (!confirm("Удалить эту запись?")) return;
+    state.photos = state.photos.filter(p => p.id !== id);
+    saveState(); sound("delete");
+    closeLightbox(); renderPhotos(); lucide.createIcons();
+  }
+
+  /* ---------------------------------------------------------------------
+     Settings Sheet
+  --------------------------------------------------------------------- */
+  function openSettings(){ sound("tap"); ui.settingsOpen = true; renderSettingsModal(); }
+  function closeSettings(){ ui.settingsOpen = false; document.getElementById("modalHost").innerHTML = ""; }
+
+  function renderSettingsModal(){
+    const host = document.getElementById("modalHost");
+    const mm = Math.floor(state.timerSettings.defaultSeconds / 60);
+    const ss = state.timerSettings.defaultSeconds % 60;
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-settings" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-5">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-lg text-zinc-100">Настройки</div>
+          <button data-action="close-settings" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
+          <div class="flex items-center gap-2.5 font-semibold text-zinc-200"><i data-lucide="volume-2" class="w-5 h-5 text-zinc-400"></i> Звуки нажатий</div>
+          ${toggleSwitchHtml(ui.soundEnabled, "toggle-app-sound")}
+        </div>
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">ТАЙМЕР ОТДЫХА</div>
+          <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-2.5">
+            <div class="font-semibold text-zinc-200">Спрашивать длительность</div>
+            ${toggleSwitchHtml(!state.timerSettings.skipPrompt, "toggle-timer-prompt")}
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
+            <div class="text-xs text-zinc-500 mb-2.5">Длительность по умолчанию</div>
+            <div class="flex items-center justify-between">
+              <button data-action="settings-timer-delta" data-delta="-15" class="tap w-12 h-12 rounded-xl bg-zinc-800 text-xl font-bold flex items-center justify-center active:bg-zinc-700">−</button>
+              <div class="text-2xl font-extrabold text-white tabular-nums">${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}</div>
+              <button data-action="settings-timer-delta" data-delta="15" class="tap w-12 h-12 rounded-xl bg-zinc-800 text-xl font-bold flex items-center justify-center active:bg-zinc-700">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    lucide.createIcons();
+  }
+
+  function toggleTimerPrompt(){
+    state.timerSettings.skipPrompt = !state.timerSettings.skipPrompt;
+    saveState(); sound("tap"); renderSettingsModal();
+  }
+  function settingsTimerDelta(delta){
+    state.timerSettings.defaultSeconds = Math.max(15, Math.min(600, state.timerSettings.defaultSeconds + delta));
+    saveState(); sound("step"); renderSettingsModal();
+  }
+
+  /* ---------------------------------------------------------------------
+     iOS-style Rest Timer Picker
+  --------------------------------------------------------------------- */
+  function openTimerPicker(){
+    ui.pickerOpen = true;
+    const total = state.timerSettings.defaultSeconds;
+    ui.pickerMinutes = Math.floor(total / 60);
+    ui.pickerSeconds = SECOND_VALUES.reduce((closest, v) => Math.abs(v - total%60) < Math.abs(closest - total%60) ? v : closest, 0);
+    renderTimerPickerModal();
+  }
+  function closeTimerPicker(){ ui.pickerOpen = false; document.getElementById("modalHost").innerHTML = ""; }
+
+  function renderTimerPickerModal(){
+    const host = document.getElementById("modalHost");
+    const minCol = MINUTE_VALUES.map(v => `<div class="picker-item" data-value="${v}">${v}</div>`).join("");
+    const secCol = SECOND_VALUES.map(v => `<div class="picker-item" data-value="${v}">${String(v).padStart(2,"0")}</div>`).join("");
+    host.innerHTML = `
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8">
+        <div class="text-center mb-1">
+          <div class="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+          <div class="font-bold text-lg text-zinc-100">Отдых между подходами</div>
+        </div>
+        <div class="relative h-44 flex justify-center items-center gap-3 mt-3">
+          <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-11 bg-zinc-800/60 rounded-2xl pointer-events-none"></div>
+          <div id="pickerMin" class="picker-col w-16 text-center"><div style="height:66px"></div>${minCol}<div style="height:66px"></div></div>
+          <div class="text-zinc-500 font-bold text-lg">мин</div>
+          <div id="pickerSec" class="picker-col w-16 text-center"><div style="height:66px"></div>${secCol}<div style="height:66px"></div></div>
+          <div class="text-zinc-500 font-bold text-lg">сек</div>
+        </div>
+        <label class="flex items-center gap-3 mt-4 mb-5 px-1 py-1 cursor-pointer">
+          <input id="pickerSkipCheckbox" type="checkbox" data-field="picker-skip" class="w-6 h-6 rounded-md accent-emerald-500" />
+          <span class="text-[15px] text-zinc-400 font-medium">Больше не спрашивать</span>
+        </label>
+        <div class="flex gap-2.5">
+          <button data-action="skip-timer" class="tap flex-1 py-4 rounded-2xl bg-zinc-800 text-zinc-300 font-bold text-[15px] active:bg-zinc-700">Без отдыха</button>
+          <button data-action="start-timer" class="tap flex-1 py-4 rounded-2xl bg-emerald-500 text-zinc-950 font-extrabold text-[15px] active:bg-emerald-400">Начать</button>
+        </div>
+      </div>
+    </div>`;
+    lucide.createIcons();
+
+    const minColEl = document.getElementById("pickerMin");
+    const secColEl = document.getElementById("pickerSec");
+    minColEl.scrollTop = MINUTE_VALUES.indexOf(ui.pickerMinutes) * PICKER_ITEM_H;
+    secColEl.scrollTop = SECOND_VALUES.indexOf(ui.pickerSeconds) * PICKER_ITEM_H;
+
+    let minT, secT;
+    minColEl.addEventListener("scroll", () => {
+      clearTimeout(minT);
+      minT = setTimeout(() => {
+        const idx = Math.round(minColEl.scrollTop / PICKER_ITEM_H);
+        ui.pickerMinutes = MINUTE_VALUES[Math.max(0, Math.min(MINUTE_VALUES.length-1, idx))];
+        sound("step");
+      }, 120);
+    });
+    secColEl.addEventListener("scroll", () => {
+      clearTimeout(secT);
+      secT = setTimeout(() => {
+        const idx = Math.round(secColEl.scrollTop / PICKER_ITEM_H);
+        ui.pickerSeconds = SECOND_VALUES[Math.max(0, Math.min(SECOND_VALUES.length-1, idx))];
+        sound("step");
+      }, 120);
+    });
+  }
+
+  function startTimerFromPicker(){
+    const total = ui.pickerMinutes*60 + ui.pickerSeconds;
+    const skip = document.getElementById("pickerSkipCheckbox").checked;
+    state.timerSettings.defaultSeconds = Math.max(15, total || 15);
+    state.timerSettings.skipPrompt = skip;
+    saveState();
+    closeTimerPicker();
+    if (total > 0) startRestTimer(total); else startRestTimer(state.timerSettings.defaultSeconds);
+  }
+  function skipTimerFromPicker(){ closeTimerPicker(); }
+
+  /* ---------------------------------------------------------------------
+     Rest Timer Engine
+  --------------------------------------------------------------------- */
+  function clearRestTimerInterval(){ if (timerIntervalId){ clearInterval(timerIntervalId); timerIntervalId = null; } }
+
+  function startRestTimer(seconds){
+    clearRestTimerInterval();
+    const endsAt = Date.now() + seconds*1000;
+    ui.timer = { active: true, total: seconds, remaining: seconds, endsAt, expanded: true };
+    localStorage.setItem(TIMER_KEY, JSON.stringify({ endsAt, total: seconds }));
+    timerIntervalId = setInterval(tickTimer, 250);
+    renderTimer();
+  }
+
+  function tickTimer(){
+    if (!ui.timer.active) return;
+    const remaining = Math.max(0, Math.round((ui.timer.endsAt - Date.now()) / 1000));
+    ui.timer.remaining = remaining;
+    updateTimerDom();
+    if (remaining <= 0) finishTimer();
+  }
+
+  function finishTimer(){
+    clearRestTimerInterval();
+    ui.timer.active = false;
+    localStorage.removeItem(TIMER_KEY);
+    sound("timerDone");
+    vibrate([30,60,30,60,30]);
+    renderTimer();
+    showToast("Отдых окончен 💪", "pr");
+  }
+
+  function expandTimer(){ ui.timer.expanded = true; renderTimer(); }
+  function collapseTimer(){ ui.timer.expanded = false; renderTimer(); }
+
+  function adjustTimer(delta){
+    ui.timer.endsAt += delta*1000;
+    ui.timer.remaining = Math.max(0, Math.round((ui.timer.endsAt - Date.now())/1000));
+    localStorage.setItem(TIMER_KEY, JSON.stringify({ endsAt: ui.timer.endsAt, total: ui.timer.total }));
+    sound("step"); vibrate(8);
+    updateTimerDom();
+  }
+
+  function skipActiveTimer(){
+    clearRestTimerInterval();
+    ui.timer.active = false;
+    localStorage.removeItem(TIMER_KEY);
+    sound("tap");
+    renderTimer();
+  }
+
+  function renderTimer(){
+    const host = document.getElementById("timerHost");
+    if (!ui.timer.active){ host.innerHTML = ""; return; }
+    const r = 26, c = 2*Math.PI*r;
+    if (ui.timer.expanded){
+      host.innerHTML = `
+      <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+        <div data-action="collapse-timer" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="anim-sheet relative w-full sm:max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-10 flex flex-col items-center">
+          <div class="text-sm font-bold text-zinc-500 mb-4 tracking-wider">ОТДЫХ</div>
+          <div class="relative w-48 h-48 mb-6">
+            <svg viewBox="0 0 60 60" class="w-full h-full -rotate-90">
+              <circle cx="30" cy="30" r="${r}" fill="none" stroke="#27272a" stroke-width="4" />
+              <circle id="timerRingFg" cx="30" cy="30" r="${r}" fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center"><span id="timerTimeText" class="text-4xl font-extrabold text-white tabular-nums">00:00</span></div>
+          </div>
+          <div class="flex items-center gap-3 mb-2">
+            <button data-action="adjust-timer" data-delta="-15" class="tap px-5 py-3 rounded-2xl bg-zinc-800 text-zinc-200 font-bold text-[15px] active:bg-zinc-700">−15с</button>
+            <button data-action="skip-active-timer" class="tap px-6 py-3 rounded-2xl bg-zinc-800 text-red-400 font-bold text-[15px] active:bg-zinc-700">Пропустить</button>
+            <button data-action="adjust-timer" data-delta="15" class="tap px-5 py-3 rounded-2xl bg-zinc-800 text-zinc-200 font-bold text-[15px] active:bg-zinc-700">+15с</button>
+          </div>
+          <button data-action="collapse-timer" class="tap text-sm text-zinc-600 mt-3 py-2 px-4 active:text-zinc-400">Свернуть</button>
+        </div>
+      </div>`;
+    } else {
+      host.innerHTML = `
+      <div data-action="expand-timer" class="tap fixed left-1/2 -translate-x-1/2 bottom-24 z-30 flex items-center gap-3 bg-zinc-900/95 backdrop-blur border border-zinc-800 rounded-full pl-2.5 pr-2.5 py-2.5 shadow-2xl cursor-pointer">
+        <div class="relative w-10 h-10 shrink-0">
+          <svg viewBox="0 0 60 60" class="w-full h-full -rotate-90">
+            <circle cx="30" cy="30" r="${r}" fill="none" stroke="#27272a" stroke-width="6" />
+            <circle id="timerRingFgMini" cx="30" cy="30" r="${r}" fill="none" stroke="#34d399" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0" />
+          </svg>
+        </div>
+        <span id="timerTimeTextMini" class="text-base font-extrabold text-white tabular-nums">00:00</span>
+        <button data-action="skip-active-timer" class="tap w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 shrink-0 active:bg-zinc-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>`;
+    }
+    lucide.createIcons();
+    updateTimerDom();
+  }
+
+  function updateTimerDom(){
+    if (!ui.timer.active) return;
+    const r = 26, c = 2*Math.PI*r;
+    const frac = ui.timer.total > 0 ? Math.max(0, Math.min(1, ui.timer.remaining / ui.timer.total)) : 0;
+    const offset = c * (1 - frac);
+    const mm = String(Math.floor(ui.timer.remaining/60)).padStart(2,"0");
+    const ss = String(ui.timer.remaining%60).padStart(2,"0");
+    const timeStr = mm + ":" + ss;
+    ["timerRingFg","timerRingFgMini"].forEach(id => { const el = document.getElementById(id); if (el) el.setAttribute("stroke-dashoffset", offset.toFixed(2)); });
+    ["timerTimeText","timerTimeTextMini"].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = timeStr; });
+  }
+
+  /* ---------------------------------------------------------------------
+     Event Delegation
+  --------------------------------------------------------------------- */
+  const app = document.getElementById("app");
+
+  app.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const a = btn.dataset;
+    switch(a.action){
+      case "switch-tab": switchTab(a.tab); break;
+      case "open-exercise": openExercise(a.exercise); break;
+      case "nav-back": navBack(); break;
+      case "step-weight": stepWeight(parseFloat(a.delta)); break;
+      case "step-reps": stepReps(parseInt(a.delta)); break;
+      case "toggle-rpe": ui.workout.rpeOpen = !ui.workout.rpeOpen; sound("tap"); render(); break;
+      case "log-set": logSet(); break;
+      case "delete-set": deleteSet(a.session, a.set); break;
+      case "open-day": openDay(a.day); break;
+      case "toggle-day-active": toggleDayActive(a.day); break;
+      case "add-day-exercise": addDayExercise(a.day); break;
+      case "remove-day-exercise": removeDayExercise(a.day, parseInt(a.index)); break;
+      case "open-chart": openChart(a.exercise); break;
+      case "close-chart": closeChart(); break;
+      case "open-add-photo": openAddPhoto(); break;
+      case "close-add-photo": closeAddPhoto(); break;
+      case "save-photo": savePhoto(); break;
+      case "open-lightbox": openLightbox(a.id); break;
+      case "close-lightbox": closeLightbox(); break;
+      case "delete-photo": deletePhoto(a.id); break;
+      case "open-settings": openSettings(); break;
+      case "close-settings": closeSettings(); break;
+      case "toggle-app-sound": toggleAppSound(); break;
+      case "toggle-timer-prompt": toggleTimerPrompt(); break;
+      case "settings-timer-delta": settingsTimerDelta(parseInt(a.delta)); break;
+      case "start-timer": startTimerFromPicker(); break;
+      case "skip-timer": skipTimerFromPicker(); break;
+      case "expand-timer": expandTimer(); break;
+      case "collapse-timer": collapseTimer(); break;
+      case "adjust-timer": adjustTimer(parseInt(a.delta)); break;
+      case "skip-active-timer": skipActiveTimer(); break;
+      case "goto-today-schedule": gotoTodaySchedule(); break;
+      case "pick-exercise-image": pickExerciseImage(a.exercise); break;
+    }
+  });
+
+  app.addEventListener("pointerdown", (e) => {
+    const handle = e.target.closest("[data-drag-handle]");
+    if (!handle) return;
+    e.preventDefault();
+    startDrag(e, handle);
+  });
+
+  app.addEventListener("input", (e) => {
+    const field = e.target.dataset.field;
+    if (field === "weight") ui.weight = parseFloat(e.target.value) || 0;
+    else if (field === "reps") ui.reps = parseInt(e.target.value) || 0;
+    else if (field === "rpe"){
+      ui.rpe = parseFloat(e.target.value);
+      const label = document.getElementById("rpeValueLabel"); if (label) label.textContent = ui.rpe;
+      const hint = document.getElementById("rpeHint"); if (hint) hint.textContent = rpeHint(ui.rpe);
+    }
+    else if (field === "photo-weight") ui.photos.weightDraft = e.target.value;
+    else if (field === "photo-date") ui.photos.dateDraft = e.target.value;
+  });
+
+  app.addEventListener("change", (e) => {
+    if (e.target.id === "photoFileInput"){
+      const file = e.target.files[0];
+      if (!file) return;
+      compressImage(file, 900, 0.72).then(dataUrl => {
+        ui.photos.draftImage = dataUrl;
+        if (ui.photos.adding) renderAddPhotoModal();
+      }).catch(() => showToast("Не удалось загрузить фото", "warn"));
+    } else if (e.target.id === "exerciseImageInput"){
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file || !ui.pendingImageExercise) return;
+      compressImage(file, 600, 0.75).then(dataUrl => {
+        state.exerciseImages[ui.pendingImageExercise] = dataUrl;
+        saveState(); sound("log");
+        render();
+      }).catch(() => showToast("Не удалось загрузить фото", "warn"));
+    }
+  });
+
+  app.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const field = e.target.dataset.field;
+    if (field === "weight" || field === "reps"){ e.preventDefault(); logSet(); }
+    else if (field === "new-day-exercise"){ e.preventDefault(); addDayExercise(ui.schedule.activeDay); }
+  });
+
+  /* ---------------------------------------------------------------------
+     Init
+  --------------------------------------------------------------------- */
+  function init(){
+    const savedTimer = localStorage.getItem(TIMER_KEY);
+    if (savedTimer){
+      try {
+        const { endsAt, total } = JSON.parse(savedTimer);
+        if (endsAt > Date.now()){
+          ui.timer = { active: true, total, endsAt, expanded: false, remaining: Math.round((endsAt-Date.now())/1000) };
+          timerIntervalId = setInterval(tickTimer, 250);
+        } else {
+          localStorage.removeItem(TIMER_KEY);
+        }
+      } catch(e){ localStorage.removeItem(TIMER_KEY); }
+    }
+    render();
+    renderTimer();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
