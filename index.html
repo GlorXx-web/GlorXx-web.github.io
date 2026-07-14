@@ -33,8 +33,9 @@
   input[type=number] { -moz-appearance: textfield; }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; }
 
-  .safe-top { padding-top: env(safe-area-inset-top); }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-top { padding-top: calc(env(safe-area-inset-top) + 14px); }
+  .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 6px); }
+  .safe-toast-top { top: calc(env(safe-area-inset-top) + 12px); }
 
   @keyframes pop-in { 0% { opacity: 0; transform: translateY(8px) scale(0.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
   .anim-pop { animation: pop-in 0.22s ease-out; }
@@ -80,10 +81,10 @@
 <body class="bg-zinc-950 text-zinc-100 h-screen flex flex-col overflow-hidden">
 
 <div id="app" class="flex flex-col h-full">
-  <header id="header" class="safe-top shrink-0 px-4 pt-4 pb-3 bg-zinc-950/95 backdrop-blur border-b border-zinc-900 flex items-center justify-between gap-2"></header>
+  <header id="header" class="safe-top shrink-0 px-4 pb-3 bg-zinc-950/95 backdrop-blur border-b border-zinc-900 flex items-center justify-between gap-2"></header>
   <main id="content" class="flex-1 overflow-y-auto px-4 pb-6"></main>
 
-  <nav id="bottomNav" class="safe-bottom shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur flex relative z-20 px-1.5 py-1">
+  <nav id="bottomNav" class="safe-bottom shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur flex relative z-20 px-1.5 pt-1">
     <button data-action="switch-tab" data-tab="workout" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
       <i data-lucide="dumbbell" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Тренировка</span>
     </button>
@@ -101,7 +102,7 @@
   <input id="exerciseImageInput" type="file" accept="image/*" class="hidden" />
   <div id="timerHost"></div>
   <div id="modalHost"></div>
-  <div id="toastHost" class="pointer-events-none fixed top-4 left-1/2 z-50"></div>
+  <div id="toastHost" class="safe-toast-top pointer-events-none fixed left-1/2 z-50"></div>
 </div>
 
 <script>
@@ -1028,7 +1029,7 @@
     const host = document.getElementById("modalHost");
     host.innerHTML = `
     <div class="fixed inset-0 z-40 bg-black/95 flex flex-col">
-      <div class="flex items-center justify-between p-4 safe-top">
+      <div class="flex items-center justify-between px-4 pb-4 safe-top">
         <div><div class="text-white font-bold">${p.weightKg}кг</div><div class="text-zinc-400 text-xs">${fmtDateLabel(p.date)}</div></div>
         <div class="flex items-center gap-2">
           <button data-action="delete-photo" data-id="${p.id}" class="tap w-11 h-11 rounded-full bg-zinc-900 text-red-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
