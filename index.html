@@ -18,6 +18,7 @@
   };
 </script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   html, body { height: 100%; overscroll-behavior-y: none; }
   body {
@@ -42,6 +43,7 @@
 
   @keyframes toast-in { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.9); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
   .anim-toast { animation: toast-in 0.25s cubic-bezier(.34,1.56,.64,1); }
+  [dir="rtl"] .anim-toast { animation: toast-in 0.25s cubic-bezier(.34,1.56,.64,1); }
 
   @keyframes flash-pr { 0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); } 30% { box-shadow: 0 0 0 4px rgba(167,139,250,0.35); } }
   .flash-pr { animation: flash-pr 1s ease-out; }
@@ -76,6 +78,11 @@
   input[type=range]::-webkit-slider-thumb:active { transform: scale(1.15); }
 
   img { transition: opacity 0.25s ease; }
+
+  @keyframes lightbox-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  .anim-lightbox { animation: lightbox-in 0.25s cubic-bezier(.22,1,.36,1); }
+
+  .chart-cursor-line { pointer-events: none; }
 </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 h-screen flex flex-col overflow-hidden">
@@ -86,20 +93,21 @@
 
   <nav id="bottomNav" class="safe-bottom shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur flex relative z-20 px-1.5 pt-1">
     <button data-action="switch-tab" data-tab="workout" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
-      <i data-lucide="dumbbell" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Тренировка</span>
+      <i data-lucide="dumbbell" class="w-6 h-6"></i><span class="text-[11px] font-semibold" data-nav-label="navWorkout"></span>
     </button>
     <button data-action="switch-tab" data-tab="schedule" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
-      <i data-lucide="calendar-days" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Расписание</span>
+      <i data-lucide="calendar-days" class="w-6 h-6"></i><span class="text-[11px] font-semibold" data-nav-label="navSchedule"></span>
     </button>
     <button data-action="switch-tab" data-tab="records" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
-      <i data-lucide="trophy" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Рекорды</span>
+      <i data-lucide="trophy" class="w-6 h-6"></i><span class="text-[11px] font-semibold" data-nav-label="navRecords"></span>
     </button>
     <button data-action="switch-tab" data-tab="photos" class="nav-btn tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl">
-      <i data-lucide="image" class="w-6 h-6"></i><span class="text-[11px] font-semibold">Фото</span>
+      <i data-lucide="image" class="w-6 h-6"></i><span class="text-[11px] font-semibold" data-nav-label="navPhotos"></span>
     </button>
   </nav>
 
   <input id="exerciseImageInput" type="file" accept="image/*" class="hidden" />
+  <div id="fabHost"></div>
   <div id="timerHost"></div>
   <div id="modalHost"></div>
   <div id="toastHost" class="safe-toast-top pointer-events-none fixed left-1/2 z-50"></div>
@@ -110,14 +118,374 @@
   "use strict";
 
   /* ---------------------------------------------------------------------
+     i18n
+  --------------------------------------------------------------------- */
+  const LANGS = ["ru","en","es","fr","de","ja","he","ar"];
+  const RTL_LANGS = ["he","ar"];
+  const LOCALE_TAGS = { ru:"ru-RU", en:"en-US", es:"es-ES", fr:"fr-FR", de:"de-DE", ja:"ja-JP", he:"he-IL", ar:"ar-SA" };
+  const LANG_NAMES = { ru:"Русский", en:"English", es:"Español", fr:"Français", de:"Deutsch", ja:"日本語", he:"עברית", ar:"العربية" };
+  const DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
+
+  const DAY_NAMES = {
+    ru: ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"],
+    en: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    es: ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"],
+    fr: ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"],
+    de: ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"],
+    ja: ["月曜日","火曜日","水曜日","木曜日","金曜日","土曜日","日曜日"],
+    he: ["יום שני","יום שלישי","יום רביעי","יום חמישי","יום שישי","שבת","יום ראשון"],
+    ar: ["الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"]
+  };
+
+  const SETS_WORD = {
+    ru: ["подход","подхода","подходов"], en: ["set","sets"], es: ["serie","series"],
+    fr: ["série","séries"], de: ["Satz","Sätze"], ja: ["セット","セット"], he: ["סט","סטים"], ar: ["مجموعة","مجموعات"]
+  };
+  const EX_WORD = {
+    ru: ["упражнение","упражнения","упражнений"], en: ["exercise","exercises"], es: ["ejercicio","ejercicios"],
+    fr: ["exercice","exercices"], de: ["Übung","Übungen"], ja: ["種目","種目"], he: ["תרגיל","תרגילים"], ar: ["تمرين","تمارين"]
+  };
+
+  function pluralize(lang, n, forms){
+    if (lang === "ru"){
+      const mod10 = n % 10, mod100 = n % 100;
+      if (mod10 === 1 && mod100 !== 11) return forms[0];
+      if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return forms[1];
+      return forms[2];
+    }
+    return n === 1 ? forms[0] : forms[1];
+  }
+
+  const TR = {
+    ru: {
+      navWorkout:"Тренировка", navSchedule:"Расписание", navRecords:"Рекорды", navPhotos:"Фото",
+      titleWorkout:"Моя тренировка", titleSchedule:"Расписание", titleRecords:"Рекорды", titlePhotos:"Фото-прогресс",
+      restTitle:"Сегодня тренировки нет", restSubtitle:"Отдыхай! 💤",
+      noExercisesToday:"На сегодня ещё нет упражнений", configureSchedule:"Настроить расписание",
+      exerciseNamePlaceholder:"Название упражнения", addExerciseBtn:"Добавить упражнение в сегодня",
+      bestLabel:"Лучший:", noDataYet:"Ещё нет данных",
+      weightLabel:"ВЕС (КГ)", repsLabel:"ПОВТОРЕНИЯ", rpeLabel:"RPE (СЛОЖНОСТЬ)", addRpe:"Добавить RPE",
+      logSetBtn:"ЗАВЕРШИТЬ ПОДХОД", setWord:"Сет", estOneRm:"~1ПМ", noSetsToday:"Пока нет подходов сегодня",
+      addExercisePhotoLabel:"Добавить фото упражнения", enterWeightReps:"Введите вес и повторения",
+      prBoth:(w,r,e)=>`Новый рекорд! ${w}кг × ${r} · ~1ПМ ${e}кг`, prWeight:(w)=>`Новый рекорд по весу: ${w}кг!`, prEpley:(e)=>`Новый расчётный 1ПМ: ${e}кг!`,
+      leftLabel:"Левая", rightLabel:"Правая", splitToggleLabel:"Раздельно Л/П",
+      rpeHint10:"Отказ — больше ни одного повторения", rpeHint9:"Остался 1 повтор в запасе", rpeHint8:"Остались 2 повтора в запасе",
+      rpeHint7:"Остались 2-3 повтора в запасе", rpeHintModerate:"Умеренно, есть запас", rpeHintEasy:"Легко",
+      addNote:"Добавить заметку", notePlaceholder:"Например: в следующий раз попробуй 35кг", noteSheetTitle:"Заметка",
+      saveNote:"Сохранить", deleteNote:"Удалить", editNote:"Изменить",
+      restDay:"День отдыха", workoutDay:"Тренировочный день",
+      saveTemplate:"Сохранить как шаблон", applyTemplate:"Вставить шаблон", templateNamePrompt:"Название шаблона",
+      templatesTitle:"Шаблоны дня", noTemplates:"Пока нет шаблонов", deleteTemplateConfirm:"Удалить этот шаблон?", confirmApplyTemplate:"Заменить текущие упражнения этим шаблоном?",
+      newTemplateNamePlaceholder:"Например: День ног", templateSaved:"Шаблон сохранён", templateApplied:"Шаблон применён",
+      maxWeightLabel:"МАКС. ВЕС", repsShort:"повт.", notEnoughData:"Недостаточно данных", progressTitle:"ПРОГРЕСС ~1ПМ",
+      noRecords:"Логируйте подходы, чтобы увидеть рекорды",
+      addPhotoEntry:"Добавить фото-запись", newEntryTitle:"Новая запись", weightKgLabel:"ВЕС (КГ)", dateLabel:"ДАТА",
+      saveBtn:"Сохранить", choosePhoto:"Выбрать фото", startPhotoJournal:"Начните вести фото-дневник прогресса",
+      deleteEntryConfirm:"Удалить эту запись?", chooseFirst:"Выберите фото", enterWeight:"Введите вес",
+      settingsTitle:"Настройки", soundLabel:"Звуки нажатий", timerSection:"ТАЙМЕР ОТДЫХА", askDurationLabel:"Спрашивать длительность",
+      defaultDurationLabel:"Длительность по умолчанию", languageLabel:"ЯЗЫК",
+      accountLabel:"АККАУНТ", emailPlaceholder:"Email", passwordPlaceholder:"Пароль", signInBtn:"Войти", signUpBtn:"Зарегистрироваться",
+      signOutBtn:"Выйти", switchToSignUp:"Нет аккаунта? Зарегистрироваться", switchToSignIn:"Уже есть аккаунт? Войти",
+      syncedAs:"Синхронизировано:", authFillBoth:"Введите email и пароль", authCheckEmail:"Проверьте почту, чтобы подтвердить регистрацию",
+      syncHint:"Войдите, чтобы данные сохранялись в облаке и не терялись", syncingLabel:"Синхронизация…", syncErrorLabel:"Ошибка синхронизации",
+      restBetweenSets:"Отдых между подходами", minShort:"мин", secShort:"сек", dontAskAgain:"Больше не спрашивать",
+      noRestBtn:"Без отдыха", startBtn:"Начать",
+      restLabel:"ОТДЫХ", skipBtn:"Пропустить", collapseBtn:"Свернуть", restOverToast:"Отдых окончен 💪",
+      photoLoadFailed:"Не удалось загрузить фото", confirmDeleteSession:"Удалить этот день тренировки? Это нельзя отменить.",
+      today:"Сегодня", yesterday:"Вчера", volumeLabel:"объём"
+    },
+    en: {
+      navWorkout:"Workout", navSchedule:"Schedule", navRecords:"Records", navPhotos:"Photos",
+      titleWorkout:"My Workout", titleSchedule:"Schedule", titleRecords:"Records", titlePhotos:"Progress Photos",
+      restTitle:"No workout today", restSubtitle:"Rest up! 💤",
+      noExercisesToday:"No exercises added for today yet", configureSchedule:"Set up schedule",
+      exerciseNamePlaceholder:"Exercise name", addExerciseBtn:"Add exercise to today",
+      bestLabel:"Best:", noDataYet:"No data yet",
+      weightLabel:"WEIGHT (KG)", repsLabel:"REPS", rpeLabel:"RPE (EFFORT)", addRpe:"Add RPE",
+      logSetBtn:"LOG SET", setWord:"Set", estOneRm:"~1RM", noSetsToday:"No sets logged yet today",
+      addExercisePhotoLabel:"Add exercise photo", enterWeightReps:"Enter weight & reps",
+      prBoth:(w,r,e)=>`New PR! ${w}kg × ${r} · ~1RM ${e}kg`, prWeight:(w)=>`New weight PR: ${w}kg!`, prEpley:(e)=>`New estimated 1RM: ${e}kg!`,
+      leftLabel:"Left", rightLabel:"Right", splitToggleLabel:"Split L/R",
+      rpeHint10:"Failure — no more reps left", rpeHint9:"1 rep left in the tank", rpeHint8:"2 reps left in the tank",
+      rpeHint7:"2-3 reps left in the tank", rpeHintModerate:"Moderate, some reserve", rpeHintEasy:"Easy",
+      addNote:"Add a note", notePlaceholder:"E.g.: try 35kg next time", noteSheetTitle:"Note",
+      saveNote:"Save", deleteNote:"Delete", editNote:"Edit",
+      restDay:"Rest day", workoutDay:"Workout day",
+      saveTemplate:"Save as template", applyTemplate:"Apply template", templateNamePrompt:"Template name",
+      templatesTitle:"Day templates", noTemplates:"No templates yet", deleteTemplateConfirm:"Delete this template?", confirmApplyTemplate:"Replace the current exercises with this template?",
+      newTemplateNamePlaceholder:"E.g.: Leg Day", templateSaved:"Template saved", templateApplied:"Template applied",
+      maxWeightLabel:"MAX WEIGHT", repsShort:"reps", notEnoughData:"Not enough data", progressTitle:"~1RM PROGRESS",
+      noRecords:"Log sets to see your records",
+      addPhotoEntry:"Add photo entry", newEntryTitle:"New entry", weightKgLabel:"WEIGHT (KG)", dateLabel:"DATE",
+      saveBtn:"Save", choosePhoto:"Choose photo", startPhotoJournal:"Start your progress photo journal",
+      deleteEntryConfirm:"Delete this entry?", chooseFirst:"Choose a photo", enterWeight:"Enter weight",
+      settingsTitle:"Settings", soundLabel:"Tap sounds", timerSection:"REST TIMER", askDurationLabel:"Ask for duration",
+      defaultDurationLabel:"Default duration", languageLabel:"LANGUAGE",
+      accountLabel:"ACCOUNT", emailPlaceholder:"Email", passwordPlaceholder:"Password", signInBtn:"Sign in", signUpBtn:"Sign up",
+      signOutBtn:"Sign out", switchToSignUp:"No account? Sign up", switchToSignIn:"Already have an account? Sign in",
+      syncedAs:"Synced as:", authFillBoth:"Enter email and password", authCheckEmail:"Check your email to confirm sign-up",
+      syncHint:"Sign in so your data is saved to the cloud and never lost", syncingLabel:"Syncing…", syncErrorLabel:"Sync error",
+      restBetweenSets:"Rest between sets", minShort:"min", secShort:"sec", dontAskAgain:"Don't ask again",
+      noRestBtn:"No rest", startBtn:"Start",
+      restLabel:"REST", skipBtn:"Skip", collapseBtn:"Collapse", restOverToast:"Rest over 💪",
+      photoLoadFailed:"Couldn't load photo", confirmDeleteSession:"Delete this whole workout day? This can't be undone.",
+      today:"Today", yesterday:"Yesterday", volumeLabel:"volume"
+    },
+    es: {
+      navWorkout:"Entreno", navSchedule:"Horario", navRecords:"Récords", navPhotos:"Fotos",
+      titleWorkout:"Mi entreno", titleSchedule:"Horario", titleRecords:"Récords", titlePhotos:"Fotos de progreso",
+      restTitle:"Hoy no hay entreno", restSubtitle:"¡A descansar! 💤",
+      noExercisesToday:"Aún no hay ejercicios para hoy", configureSchedule:"Configurar horario",
+      exerciseNamePlaceholder:"Nombre del ejercicio", addExerciseBtn:"Añadir ejercicio a hoy",
+      bestLabel:"Mejor:", noDataYet:"Sin datos todavía",
+      weightLabel:"PESO (KG)", repsLabel:"REPETICIONES", rpeLabel:"RPE (ESFUERZO)", addRpe:"Añadir RPE",
+      logSetBtn:"REGISTRAR SERIE", setWord:"Serie", estOneRm:"~1RM", noSetsToday:"Sin series hoy todavía",
+      addExercisePhotoLabel:"Añadir foto del ejercicio", enterWeightReps:"Introduce peso y repeticiones",
+      prBoth:(w,r,e)=>`¡Nuevo récord! ${w}kg × ${r} · ~1RM ${e}kg`, prWeight:(w)=>`Nuevo récord de peso: ${w}kg!`, prEpley:(e)=>`Nuevo 1RM estimado: ${e}kg!`,
+      leftLabel:"Izquierda", rightLabel:"Derecha", splitToggleLabel:"Dividir I/D",
+      rpeHint10:"Al fallo — sin repeticiones de reserva", rpeHint9:"1 repetición de reserva", rpeHint8:"2 repeticiones de reserva",
+      rpeHint7:"2-3 repeticiones de reserva", rpeHintModerate:"Moderado, con reserva", rpeHintEasy:"Fácil",
+      addNote:"Añadir nota", notePlaceholder:"Ej.: prueba 35kg la próxima vez", noteSheetTitle:"Nota",
+      saveNote:"Guardar", deleteNote:"Eliminar", editNote:"Editar",
+      restDay:"Día de descanso", workoutDay:"Día de entreno",
+      saveTemplate:"Guardar como plantilla", applyTemplate:"Aplicar plantilla", templateNamePrompt:"Nombre de la plantilla",
+      templatesTitle:"Plantillas del día", noTemplates:"Sin plantillas todavía", deleteTemplateConfirm:"¿Eliminar esta plantilla?", confirmApplyTemplate:"¿Reemplazar los ejercicios actuales con esta plantilla?",
+      newTemplateNamePlaceholder:"Ej.: Día de piernas", templateSaved:"Plantilla guardada", templateApplied:"Plantilla aplicada",
+      maxWeightLabel:"PESO MÁX.", repsShort:"reps.", notEnoughData:"Datos insuficientes", progressTitle:"PROGRESO ~1RM",
+      noRecords:"Registra series para ver tus récords",
+      addPhotoEntry:"Añadir foto", newEntryTitle:"Nueva entrada", weightKgLabel:"PESO (KG)", dateLabel:"FECHA",
+      saveBtn:"Guardar", choosePhoto:"Elegir foto", startPhotoJournal:"Empieza tu diario de fotos de progreso",
+      deleteEntryConfirm:"¿Eliminar esta entrada?", chooseFirst:"Elige una foto", enterWeight:"Introduce el peso",
+      settingsTitle:"Ajustes", soundLabel:"Sonidos al tocar", timerSection:"TEMPORIZADOR DE DESCANSO", askDurationLabel:"Preguntar duración",
+      defaultDurationLabel:"Duración predeterminada", languageLabel:"IDIOMA",
+      accountLabel:"CUENTA", emailPlaceholder:"Email", passwordPlaceholder:"Contraseña", signInBtn:"Iniciar sesión", signUpBtn:"Registrarse",
+      signOutBtn:"Cerrar sesión", switchToSignUp:"¿Sin cuenta? Regístrate", switchToSignIn:"¿Ya tienes cuenta? Inicia sesión",
+      syncedAs:"Sincronizado como:", authFillBoth:"Introduce email y contraseña", authCheckEmail:"Revisa tu correo para confirmar el registro",
+      syncHint:"Inicia sesión para guardar tus datos en la nube y no perderlos", syncingLabel:"Sincronizando…", syncErrorLabel:"Error de sincronización",
+      restBetweenSets:"Descanso entre series", minShort:"min", secShort:"seg", dontAskAgain:"No preguntar más",
+      noRestBtn:"Sin descanso", startBtn:"Empezar",
+      restLabel:"DESCANSO", skipBtn:"Saltar", collapseBtn:"Contraer", restOverToast:"Descanso terminado 💪",
+      photoLoadFailed:"No se pudo cargar la foto", confirmDeleteSession:"¿Eliminar todo este día de entreno? No se puede deshacer.",
+      today:"Hoy", yesterday:"Ayer", volumeLabel:"volumen"
+    },
+    fr: {
+      navWorkout:"Entraînement", navSchedule:"Planning", navRecords:"Records", navPhotos:"Photos",
+      titleWorkout:"Mon entraînement", titleSchedule:"Planning", titleRecords:"Records", titlePhotos:"Photos de progrès",
+      restTitle:"Pas d'entraînement aujourd'hui", restSubtitle:"Repose-toi ! 💤",
+      noExercisesToday:"Aucun exercice ajouté pour aujourd'hui", configureSchedule:"Configurer le planning",
+      exerciseNamePlaceholder:"Nom de l'exercice", addExerciseBtn:"Ajouter un exercice à aujourd'hui",
+      bestLabel:"Meilleur :", noDataYet:"Pas encore de données",
+      weightLabel:"POIDS (KG)", repsLabel:"RÉPÉTITIONS", rpeLabel:"RPE (EFFORT)", addRpe:"Ajouter RPE",
+      logSetBtn:"VALIDER LA SÉRIE", setWord:"Série", estOneRm:"~1RM", noSetsToday:"Aucune série aujourd'hui",
+      addExercisePhotoLabel:"Ajouter une photo de l'exercice", enterWeightReps:"Entrez le poids et les répétitions",
+      prBoth:(w,r,e)=>`Nouveau record ! ${w}kg × ${r} · ~1RM ${e}kg`, prWeight:(w)=>`Nouveau record de poids : ${w}kg !`, prEpley:(e)=>`Nouveau 1RM estimé : ${e}kg !`,
+      leftLabel:"Gauche", rightLabel:"Droite", splitToggleLabel:"Séparer G/D",
+      rpeHint10:"Échec — plus aucune répétition possible", rpeHint9:"1 répétition en réserve", rpeHint8:"2 répétitions en réserve",
+      rpeHint7:"2-3 répétitions en réserve", rpeHintModerate:"Modéré, encore de la réserve", rpeHintEasy:"Facile",
+      addNote:"Ajouter une note", notePlaceholder:"Ex. : essaie 35kg la prochaine fois", noteSheetTitle:"Note",
+      saveNote:"Enregistrer", deleteNote:"Supprimer", editNote:"Modifier",
+      restDay:"Jour de repos", workoutDay:"Jour d'entraînement",
+      saveTemplate:"Enregistrer comme modèle", applyTemplate:"Appliquer un modèle", templateNamePrompt:"Nom du modèle",
+      templatesTitle:"Modèles de jour", noTemplates:"Aucun modèle pour l'instant", deleteTemplateConfirm:"Supprimer ce modèle ?", confirmApplyTemplate:"Remplacer les exercices actuels par ce modèle ?",
+      newTemplateNamePlaceholder:"Ex. : Jour de jambes", templateSaved:"Modèle enregistré", templateApplied:"Modèle appliqué",
+      maxWeightLabel:"POIDS MAX", repsShort:"réps.", notEnoughData:"Données insuffisantes", progressTitle:"PROGRÈS ~1RM",
+      noRecords:"Enregistrez des séries pour voir vos records",
+      addPhotoEntry:"Ajouter une photo", newEntryTitle:"Nouvelle entrée", weightKgLabel:"POIDS (KG)", dateLabel:"DATE",
+      saveBtn:"Enregistrer", choosePhoto:"Choisir une photo", startPhotoJournal:"Commencez votre journal photo de progrès",
+      deleteEntryConfirm:"Supprimer cette entrée ?", chooseFirst:"Choisissez une photo", enterWeight:"Entrez le poids",
+      settingsTitle:"Réglages", soundLabel:"Sons au toucher", timerSection:"MINUTEUR DE REPOS", askDurationLabel:"Demander la durée",
+      defaultDurationLabel:"Durée par défaut", languageLabel:"LANGUE",
+      accountLabel:"COMPTE", emailPlaceholder:"Email", passwordPlaceholder:"Mot de passe", signInBtn:"Se connecter", signUpBtn:"S'inscrire",
+      signOutBtn:"Se déconnecter", switchToSignUp:"Pas de compte ? S'inscrire", switchToSignIn:"Déjà un compte ? Se connecter",
+      syncedAs:"Synchronisé en tant que :", authFillBoth:"Entrez l'email et le mot de passe", authCheckEmail:"Vérifiez votre email pour confirmer l'inscription",
+      syncHint:"Connectez-vous pour sauvegarder vos données dans le cloud", syncingLabel:"Synchronisation…", syncErrorLabel:"Erreur de synchronisation",
+      restBetweenSets:"Repos entre les séries", minShort:"min", secShort:"sec", dontAskAgain:"Ne plus demander",
+      noRestBtn:"Pas de repos", startBtn:"Démarrer",
+      restLabel:"REPOS", skipBtn:"Passer", collapseBtn:"Réduire", restOverToast:"Repos terminé 💪",
+      photoLoadFailed:"Échec du chargement de la photo", confirmDeleteSession:"Supprimer toute cette journée d'entraînement ? Action irréversible.",
+      today:"Aujourd'hui", yesterday:"Hier", volumeLabel:"volume"
+    },
+    de: {
+      navWorkout:"Training", navSchedule:"Plan", navRecords:"Rekorde", navPhotos:"Fotos",
+      titleWorkout:"Mein Training", titleSchedule:"Trainingsplan", titleRecords:"Rekorde", titlePhotos:"Fortschrittsfotos",
+      restTitle:"Heute kein Training", restSubtitle:"Erhol dich! 💤",
+      noExercisesToday:"Noch keine Übungen für heute", configureSchedule:"Plan einrichten",
+      exerciseNamePlaceholder:"Übungsname", addExerciseBtn:"Übung zu heute hinzufügen",
+      bestLabel:"Bestwert:", noDataYet:"Noch keine Daten",
+      weightLabel:"GEWICHT (KG)", repsLabel:"WIEDERHOLUNGEN", rpeLabel:"RPE (ANSTRENGUNG)", addRpe:"RPE hinzufügen",
+      logSetBtn:"SATZ ABSCHLIESSEN", setWord:"Satz", estOneRm:"~1RM", noSetsToday:"Heute noch keine Sätze erfasst",
+      addExercisePhotoLabel:"Übungsfoto hinzufügen", enterWeightReps:"Gewicht und Wiederholungen eingeben",
+      prBoth:(w,r,e)=>`Neuer Rekord! ${w}kg × ${r} · ~1RM ${e}kg`, prWeight:(w)=>`Neuer Gewichtsrekord: ${w}kg!`, prEpley:(e)=>`Neues geschätztes 1RM: ${e}kg!`,
+      leftLabel:"Links", rightLabel:"Rechts", splitToggleLabel:"L/R trennen",
+      rpeHint10:"Muskelversagen — keine Wiederholung mehr", rpeHint9:"1 Wiederholung Reserve", rpeHint8:"2 Wiederholungen Reserve",
+      rpeHint7:"2-3 Wiederholungen Reserve", rpeHintModerate:"Moderat, noch Reserve", rpeHintEasy:"Leicht",
+      addNote:"Notiz hinzufügen", notePlaceholder:"Z. B.: nächstes Mal 35kg versuchen", noteSheetTitle:"Notiz",
+      saveNote:"Speichern", deleteNote:"Löschen", editNote:"Bearbeiten",
+      restDay:"Ruhetag", workoutDay:"Trainingstag",
+      saveTemplate:"Als Vorlage speichern", applyTemplate:"Vorlage anwenden", templateNamePrompt:"Vorlagenname",
+      templatesTitle:"Tagesvorlagen", noTemplates:"Noch keine Vorlagen", deleteTemplateConfirm:"Diese Vorlage löschen?", confirmApplyTemplate:"Aktuelle Übungen durch diese Vorlage ersetzen?",
+      newTemplateNamePlaceholder:"Z. B.: Beintag", templateSaved:"Vorlage gespeichert", templateApplied:"Vorlage angewendet",
+      maxWeightLabel:"MAX. GEWICHT", repsShort:"Wdh.", notEnoughData:"Nicht genug Daten", progressTitle:"~1RM VERLAUF",
+      noRecords:"Erfasse Sätze, um deine Rekorde zu sehen",
+      addPhotoEntry:"Fotoeintrag hinzufügen", newEntryTitle:"Neuer Eintrag", weightKgLabel:"GEWICHT (KG)", dateLabel:"DATUM",
+      saveBtn:"Speichern", choosePhoto:"Foto auswählen", startPhotoJournal:"Starte dein Fortschritts-Fototagebuch",
+      deleteEntryConfirm:"Diesen Eintrag löschen?", chooseFirst:"Wähle ein Foto", enterWeight:"Gewicht eingeben",
+      settingsTitle:"Einstellungen", soundLabel:"Tippgeräusche", timerSection:"PAUSEN-TIMER", askDurationLabel:"Dauer abfragen",
+      defaultDurationLabel:"Standarddauer", languageLabel:"SPRACHE",
+      accountLabel:"KONTO", emailPlaceholder:"E-Mail", passwordPlaceholder:"Passwort", signInBtn:"Anmelden", signUpBtn:"Registrieren",
+      signOutBtn:"Abmelden", switchToSignUp:"Kein Konto? Registrieren", switchToSignIn:"Schon ein Konto? Anmelden",
+      syncedAs:"Synchronisiert als:", authFillBoth:"E-Mail und Passwort eingeben", authCheckEmail:"Prüfe deine E-Mail, um die Registrierung zu bestätigen",
+      syncHint:"Melde dich an, damit deine Daten in der Cloud gespeichert werden", syncingLabel:"Synchronisierung…", syncErrorLabel:"Synchronisierungsfehler",
+      restBetweenSets:"Pause zwischen Sätzen", minShort:"Min", secShort:"Sek", dontAskAgain:"Nicht mehr fragen",
+      noRestBtn:"Keine Pause", startBtn:"Starten",
+      restLabel:"PAUSE", skipBtn:"Überspringen", collapseBtn:"Einklappen", restOverToast:"Pause vorbei 💪",
+      photoLoadFailed:"Foto konnte nicht geladen werden", confirmDeleteSession:"Diesen ganzen Trainingstag löschen? Kann nicht rückgängig gemacht werden.",
+      today:"Heute", yesterday:"Gestern", volumeLabel:"Volumen"
+    },
+    ja: {
+      navWorkout:"トレーニング", navSchedule:"予定", navRecords:"記録", navPhotos:"写真",
+      titleWorkout:"今日のトレーニング", titleSchedule:"予定", titleRecords:"記録", titlePhotos:"経過写真",
+      restTitle:"今日は休養日", restSubtitle:"ゆっくり休もう 💤",
+      noExercisesToday:"今日の種目はまだありません", configureSchedule:"予定を設定",
+      exerciseNamePlaceholder:"種目名", addExerciseBtn:"今日に種目を追加",
+      bestLabel:"自己ベスト:", noDataYet:"データがありません",
+      weightLabel:"重量 (KG)", repsLabel:"回数", rpeLabel:"RPE(強度)", addRpe:"RPEを追加",
+      logSetBtn:"セット完了", setWord:"セット", estOneRm:"~1RM", noSetsToday:"今日はまだ記録がありません",
+      addExercisePhotoLabel:"種目の写真を追加", enterWeightReps:"重量と回数を入力してください",
+      prBoth:(w,r,e)=>`新記録！${w}kg × ${r} · ~1RM ${e}kg`, prWeight:(w)=>`新しい重量記録：${w}kg！`, prEpley:(e)=>`新しい推定1RM：${e}kg！`,
+      leftLabel:"左", rightLabel:"右", splitToggleLabel:"左右を分ける",
+      rpeHint10:"限界 — もう1回もできない", rpeHint9:"あと1回できる余力", rpeHint8:"あと2回できる余力",
+      rpeHint7:"あと2〜3回できる余力", rpeHintModerate:"中程度、余力あり", rpeHintEasy:"楽",
+      addNote:"メモを追加", notePlaceholder:"例：次回は35kgに挑戦", noteSheetTitle:"メモ",
+      saveNote:"保存", deleteNote:"削除", editNote:"編集",
+      restDay:"休養日", workoutDay:"トレーニング日",
+      saveTemplate:"テンプレートとして保存", applyTemplate:"テンプレートを適用", templateNamePrompt:"テンプレート名",
+      templatesTitle:"日別テンプレート", noTemplates:"テンプレートはまだありません", deleteTemplateConfirm:"このテンプレートを削除しますか？", confirmApplyTemplate:"現在の種目をこのテンプレートに置き換えますか？",
+      newTemplateNamePlaceholder:"例：脚の日", templateSaved:"テンプレートを保存しました", templateApplied:"テンプレートを適用しました",
+      maxWeightLabel:"最大重量", repsShort:"回", notEnoughData:"データが不足しています", progressTitle:"~1RM の推移",
+      noRecords:"セットを記録すると記録が表示されます",
+      addPhotoEntry:"写真を追加", newEntryTitle:"新しい記録", weightKgLabel:"体重 (KG)", dateLabel:"日付",
+      saveBtn:"保存", choosePhoto:"写真を選択", startPhotoJournal:"経過写真の記録を始めましょう",
+      deleteEntryConfirm:"この記録を削除しますか？", chooseFirst:"写真を選択してください", enterWeight:"体重を入力してください",
+      settingsTitle:"設定", soundLabel:"タップ音", timerSection:"休憩タイマー", askDurationLabel:"毎回時間を確認する",
+      defaultDurationLabel:"デフォルトの時間", languageLabel:"言語",
+      accountLabel:"アカウント", emailPlaceholder:"メール", passwordPlaceholder:"パスワード", signInBtn:"ログイン", signUpBtn:"新規登録",
+      signOutBtn:"ログアウト", switchToSignUp:"アカウントをお持ちでない方は新規登録", switchToSignIn:"アカウントをお持ちの方はログイン",
+      syncedAs:"同期中:", authFillBoth:"メールとパスワードを入力してください", authCheckEmail:"登録確認のためメールを確認してください",
+      syncHint:"ログインするとデータがクラウドに保存され失われません", syncingLabel:"同期中…", syncErrorLabel:"同期エラー",
+      restBetweenSets:"セット間の休憩", minShort:"分", secShort:"秒", dontAskAgain:"次回から確認しない",
+      noRestBtn:"休憩なし", startBtn:"開始",
+      restLabel:"休憩中", skipBtn:"スキップ", collapseBtn:"閉じる", restOverToast:"休憩終了 💪",
+      photoLoadFailed:"写真を読み込めませんでした", confirmDeleteSession:"このトレーニング日を削除しますか？元に戻せません。",
+      today:"今日", yesterday:"昨日", volumeLabel:"総量"
+    },
+    he: {
+      navWorkout:"אימון", navSchedule:"לוח זמנים", navRecords:"שיאים", navPhotos:"תמונות",
+      titleWorkout:"האימון שלי", titleSchedule:"לוח זמנים", titleRecords:"שיאים", titlePhotos:"תמונות התקדמות",
+      restTitle:"אין אימון היום", restSubtitle:"תנוח! 💤",
+      noExercisesToday:"עדיין אין תרגילים להיום", configureSchedule:"הגדר לוח זמנים",
+      exerciseNamePlaceholder:"שם התרגיל", addExerciseBtn:"הוסף תרגיל להיום",
+      bestLabel:"שיא:", noDataYet:"אין עדיין נתונים",
+      weightLabel:"משקל (ק\"ג)", repsLabel:"חזרות", rpeLabel:"RPE (מאמץ)", addRpe:"הוסף RPE",
+      logSetBtn:"סיים סט", setWord:"סט", estOneRm:"~1RM", noSetsToday:"עדיין לא נרשמו סטים היום",
+      addExercisePhotoLabel:"הוסף תמונת תרגיל", enterWeightReps:"הזן משקל וחזרות",
+      prBoth:(w,r,e)=>`שיא חדש! ${w} ק"ג × ${r} · ~1RM ${e} ק"ג`, prWeight:(w)=>`שיא משקל חדש: ${w} ק"ג!`, prEpley:(e)=>`1RM משוער חדש: ${e} ק"ג!`,
+      leftLabel:"שמאל", rightLabel:"ימין", splitToggleLabel:"פיצול שמאל/ימין",
+      rpeHint10:"כשל — אין עוד חזרות", rpeHint9:"נותרה חזרה אחת ברזרבה", rpeHint8:"נותרו 2 חזרות ברזרבה",
+      rpeHint7:"נותרו 2-3 חזרות ברזרבה", rpeHintModerate:"בינוני, יש עוד רזרבה", rpeHintEasy:"קל",
+      addNote:"הוסף פתק", notePlaceholder:"לדוגמה: בפעם הבאה נסה 35 ק\"ג", noteSheetTitle:"פתק",
+      saveNote:"שמור", deleteNote:"מחק", editNote:"ערוך",
+      restDay:"יום מנוחה", workoutDay:"יום אימון",
+      saveTemplate:"שמור כתבנית", applyTemplate:"החל תבנית", templateNamePrompt:"שם התבנית",
+      templatesTitle:"תבניות יום", noTemplates:"עדיין אין תבניות", deleteTemplateConfirm:"למחוק את התבנית הזו?", confirmApplyTemplate:"להחליף את התרגילים הנוכחיים בתבנית הזו?",
+      newTemplateNamePlaceholder:"לדוגמה: יום רגליים", templateSaved:"התבנית נשמרה", templateApplied:"התבנית הוחלה",
+      maxWeightLabel:"משקל מקס'", repsShort:"חזרות", notEnoughData:"אין מספיק נתונים", progressTitle:"התקדמות ~1RM",
+      noRecords:"רשום סטים כדי לראות את השיאים שלך",
+      addPhotoEntry:"הוסף תמונה", newEntryTitle:"רשומה חדשה", weightKgLabel:"משקל (ק\"ג)", dateLabel:"תאריך",
+      saveBtn:"שמור", choosePhoto:"בחר תמונה", startPhotoJournal:"התחל יומן תמונות התקדמות",
+      deleteEntryConfirm:"למחוק את הרשומה הזו?", chooseFirst:"בחר תמונה", enterWeight:"הזן משקל",
+      settingsTitle:"הגדרות", soundLabel:"צלילי הקשה", timerSection:"טיימר מנוחה", askDurationLabel:"שאל לגבי משך הזמן",
+      defaultDurationLabel:"משך זמן ברירת מחדל", languageLabel:"שפה",
+      accountLabel:"חשבון", emailPlaceholder:"אימייל", passwordPlaceholder:"סיסמה", signInBtn:"התחבר", signUpBtn:"הרשמה",
+      signOutBtn:"התנתק", switchToSignUp:"אין חשבון? הרשמה", switchToSignIn:"כבר יש חשבון? התחבר",
+      syncedAs:"מסונכרן כ:", authFillBoth:"הזן אימייל וסיסמה", authCheckEmail:"בדוק את האימייל שלך לאישור ההרשמה",
+      syncHint:"התחבר כדי לשמור את הנתונים שלך בענן ולא לאבד אותם", syncingLabel:"מסנכרן…", syncErrorLabel:"שגיאת סנכרון",
+      restBetweenSets:"מנוחה בין סטים", minShort:"דק'", secShort:"שנ'", dontAskAgain:"אל תשאל שוב",
+      noRestBtn:"בלי מנוחה", startBtn:"התחל",
+      restLabel:"מנוחה", skipBtn:"דלג", collapseBtn:"כווץ", restOverToast:"המנוחה נגמרה 💪",
+      photoLoadFailed:"טעינת התמונה נכשלה", confirmDeleteSession:"למחוק את כל יום האימון הזה? לא ניתן לבטל.",
+      today:"היום", yesterday:"אתמול", volumeLabel:"נפח"
+    },
+    ar: {
+      navWorkout:"التمرين", navSchedule:"الجدول", navRecords:"الأرقام القياسية", navPhotos:"الصور",
+      titleWorkout:"تمريني", titleSchedule:"الجدول", titleRecords:"الأرقام القياسية", titlePhotos:"صور التقدم",
+      restTitle:"لا يوجد تمرين اليوم", restSubtitle:"استرح! 💤",
+      noExercisesToday:"لا توجد تمارين لليوم بعد", configureSchedule:"إعداد الجدول",
+      exerciseNamePlaceholder:"اسم التمرين", addExerciseBtn:"أضف تمرينًا لليوم",
+      bestLabel:"الأفضل:", noDataYet:"لا توجد بيانات بعد",
+      weightLabel:"الوزن (كجم)", repsLabel:"التكرارات", rpeLabel:"RPE (الجهد)", addRpe:"إضافة RPE",
+      logSetBtn:"إنهاء المجموعة", setWord:"مجموعة", estOneRm:"~1RM", noSetsToday:"لا توجد مجموعات مسجلة اليوم بعد",
+      addExercisePhotoLabel:"إضافة صورة للتمرين", enterWeightReps:"أدخل الوزن والتكرارات",
+      prBoth:(w,r,e)=>`رقم قياسي جديد! ${w}كجم × ${r} · ~1RM ${e}كجم`, prWeight:(w)=>`رقم قياسي جديد للوزن: ${w}كجم!`, prEpley:(e)=>`1RM تقديري جديد: ${e}كجم!`,
+      leftLabel:"يسار", rightLabel:"يمين", splitToggleLabel:"فصل يسار/يمين",
+      rpeHint10:"فشل عضلي — لا مزيد من التكرارات", rpeHint9:"تبقّى تكرار واحد", rpeHint8:"تبقّى تكراران",
+      rpeHint7:"تبقّى 2-3 تكرارات", rpeHintModerate:"متوسط، هناك احتياطي", rpeHintEasy:"سهل",
+      addNote:"إضافة ملاحظة", notePlaceholder:"مثال: جرّب 35 كجم في المرة القادمة", noteSheetTitle:"ملاحظة",
+      saveNote:"حفظ", deleteNote:"حذف", editNote:"تعديل",
+      restDay:"يوم راحة", workoutDay:"يوم تمرين",
+      saveTemplate:"حفظ كقالب", applyTemplate:"تطبيق قالب", templateNamePrompt:"اسم القالب",
+      templatesTitle:"قوالب اليوم", noTemplates:"لا توجد قوالب بعد", deleteTemplateConfirm:"حذف هذا القالب؟", confirmApplyTemplate:"استبدال التمارين الحالية بهذا القالب؟",
+      newTemplateNamePlaceholder:"مثال: يوم الأرجل", templateSaved:"تم حفظ القالب", templateApplied:"تم تطبيق القالب",
+      maxWeightLabel:"أقصى وزن", repsShort:"تكرار", notEnoughData:"بيانات غير كافية", progressTitle:"تقدّم ~1RM",
+      noRecords:"سجّل مجموعات لرؤية أرقامك القياسية",
+      addPhotoEntry:"إضافة صورة", newEntryTitle:"إدخال جديد", weightKgLabel:"الوزن (كجم)", dateLabel:"التاريخ",
+      saveBtn:"حفظ", choosePhoto:"اختر صورة", startPhotoJournal:"ابدأ مذكرات صور التقدم",
+      deleteEntryConfirm:"حذف هذا الإدخال؟", chooseFirst:"اختر صورة", enterWeight:"أدخل الوزن",
+      settingsTitle:"الإعدادات", soundLabel:"أصوات النقر", timerSection:"مؤقت الراحة", askDurationLabel:"السؤال عن المدة",
+      defaultDurationLabel:"المدة الافتراضية", languageLabel:"اللغة",
+      accountLabel:"الحساب", emailPlaceholder:"البريد الإلكتروني", passwordPlaceholder:"كلمة المرور", signInBtn:"تسجيل الدخول", signUpBtn:"إنشاء حساب",
+      signOutBtn:"تسجيل الخروج", switchToSignUp:"لا يوجد حساب؟ أنشئ حسابًا", switchToSignIn:"لديك حساب بالفعل؟ سجّل الدخول",
+      syncedAs:"مُزامَن باسم:", authFillBoth:"أدخل البريد الإلكتروني وكلمة المرور", authCheckEmail:"تحقق من بريدك الإلكتروني لتأكيد التسجيل",
+      syncHint:"سجّل الدخول ليتم حفظ بياناتك في السحابة وعدم فقدانها", syncingLabel:"جارٍ المزامنة…", syncErrorLabel:"خطأ في المزامنة",
+      restBetweenSets:"الراحة بين المجموعات", minShort:"د", secShort:"ث", dontAskAgain:"لا تسأل مرة أخرى",
+      noRestBtn:"بدون راحة", startBtn:"ابدأ",
+      restLabel:"راحة", skipBtn:"تخطي", collapseBtn:"طي", restOverToast:"انتهت الراحة 💪",
+      photoLoadFailed:"تعذّر تحميل الصورة", confirmDeleteSession:"حذف يوم التمرين هذا بالكامل؟ لا يمكن التراجع.",
+      today:"اليوم", yesterday:"أمس", volumeLabel:"الحجم"
+    }
+  };
+
+  function detectLanguage(){
+    try {
+      const navLangs = navigator.languages || [navigator.language];
+      for (const nl of navLangs){
+        const primary = (nl || "").slice(0,2).toLowerCase();
+        if (LANGS.includes(primary)) return primary;
+      }
+    } catch(e) {}
+    return "en";
+  }
+
+  /* ---------------------------------------------------------------------
      Constants & State
   --------------------------------------------------------------------- */
-  const STORAGE_KEY = "ironlog_v2";
-  const SOUND_KEY = "ironlog_v2_sound";
-  const TIMER_KEY = "ironlog_v2_timer";
+  const STORAGE_KEY = "ironlog_v3";
+  const SOUND_KEY = "ironlog_v3_sound";
+  const TIMER_KEY = "ironlog_v3_timer";
+  const LANG_KEY = "ironlog_v3_lang";
 
-  const DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
-  const DAY_FULL = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
+  /* ---------------------------------------------------------------------
+     Cloud Sync (Supabase) — publishable key only, never the secret key
+  --------------------------------------------------------------------- */
+  const SUPABASE_URL = "https://qmjplztwgmfdmxjyutop.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ldW-n9BV7OqktONXMrYaHQ_TeJkJ2rr";
+  const sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+  let supaUser = null;
+  let syncTimer = null;
+  let syncStatus = "idle"; // idle | syncing | synced | error
+
   const MINUTE_VALUES = [0,1,2,3,4,5,6,7,8,9,10];
   const SECOND_VALUES = [0,5,10,15,20,25,30,35,40,45,50,55];
   const PICKER_ITEM_H = 44;
@@ -134,43 +502,172 @@
       sessions: [],
       photos: [],
       exerciseImages: {},
+      exerciseNotes: {},
+      dayTemplates: [],
       timerSettings: { defaultSeconds: 90, skipPrompt: false }
     };
+  }
+
+  function normalizeState(parsed){
+    if (!parsed || !parsed.schedule || !Array.isArray(parsed.sessions)) return null;
+    if (!parsed.exerciseImages) parsed.exerciseImages = {};
+    if (!parsed.exerciseNotes) parsed.exerciseNotes = {};
+    if (!parsed.dayTemplates) parsed.dayTemplates = [];
+    if (!parsed.photos) parsed.photos = [];
+    if (!parsed.timerSettings) parsed.timerSettings = { defaultSeconds: 90, skipPrompt: false };
+    return parsed;
   }
 
   function loadState(){
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.schedule && Array.isArray(parsed.sessions)){
-          if (!parsed.exerciseImages) parsed.exerciseImages = {};
-          return parsed;
-        }
+        const normalized = normalizeState(JSON.parse(raw));
+        if (normalized) return normalized;
       }
     } catch(e) {}
     return defaultState();
   }
 
-  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function saveState(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    scheduleCloudSync();
+  }
 
   let state = loadState();
   let timerIntervalId = null;
   let dragCtx = null;
+  let chartDragCtx = null;
+
+  let lang = localStorage.getItem(LANG_KEY) || detectLanguage();
+  if (!LANGS.includes(lang)) lang = "en";
+  let T = TR[lang];
+
+  function applyLangDom(){
+    const isRtl = RTL_LANGS.includes(lang);
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isRtl ? "rtl" : "ltr";
+  }
+
+  function setLanguage(newLang){
+    lang = newLang;
+    T = TR[lang];
+    localStorage.setItem(LANG_KEY, lang);
+    applyLangDom();
+    render();
+    renderTimer();
+  }
 
   let ui = {
     tab: "workout",
-    workout: { view: "list", activeExercise: null, rpeOpen: false },
+    workout: { view: "list", activeExercise: null, rpeOpen: false, splitSides: false, addingExercise: false },
     schedule: { view: "list", activeDay: null },
     photos: { adding: false, lightboxId: null, draftImage: null, weightDraft: "", dateDraft: "" },
-    chartExercise: null,
     settingsOpen: false,
     pickerOpen: false, pickerMinutes: 1, pickerSeconds: 30,
     pendingImageExercise: null,
-    weight: 20, reps: 5, rpe: 7,
+    weight: 20, reps: 5, weightL: 20, weightR: 20, repsL: 5, repsR: 5, rpe: 7,
     soundEnabled: localStorage.getItem(SOUND_KEY) !== "off",
-    timer: { active: false, remaining: 0, total: 0, endsAt: 0, expanded: false }
+    timer: { active: false, remaining: 0, total: 0, endsAt: 0, expanded: false },
+    imageLightbox: null,
+    noteEditing: false,
+    templatesOpen: false,
+    auth: { mode: "signin", busy: false, error: "" }
   };
+
+  /* ---------------------------------------------------------------------
+     Cloud Sync (Supabase)
+  --------------------------------------------------------------------- */
+  function scheduleCloudSync(){
+    if (!sb || !supaUser) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(pushStateToCloud, 900);
+  }
+
+  async function pushStateToCloud(){
+    if (!sb || !supaUser) return;
+    syncStatus = "syncing";
+    try {
+      const { error } = await sb.from("user_data").upsert({
+        user_id: supaUser.id, data: state, updated_at: new Date().toISOString()
+      });
+      syncStatus = error ? "error" : "synced";
+    } catch(e){ syncStatus = "error"; }
+    if (ui.settingsOpen) renderSettingsModal();
+  }
+
+  async function pullStateFromCloud(){
+    if (!sb || !supaUser) return;
+    syncStatus = "syncing";
+    try {
+      const { data, error } = await sb.from("user_data").select("data").eq("user_id", supaUser.id).maybeSingle();
+      if (error) throw error;
+      if (data && data.data){
+        const normalized = normalizeState(data.data);
+        if (normalized){ state = normalized; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); render(); renderTimer(); }
+      } else {
+        await pushStateToCloud();
+      }
+      syncStatus = "synced";
+    } catch(e){ syncStatus = "error"; }
+    if (ui.settingsOpen) renderSettingsModal();
+  }
+
+  async function initAuth(){
+    if (!sb) return;
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      supaUser = session ? session.user : null;
+      if (supaUser) await pullStateFromCloud();
+    } catch(e) {}
+    sb.auth.onAuthStateChange((event, session) => {
+      supaUser = session ? session.user : null;
+      if (event === "SIGNED_IN") pullStateFromCloud();
+      if (ui.settingsOpen) renderSettingsModal();
+    });
+  }
+
+  async function submitAuth(){
+    if (!sb) return;
+    const email = (document.getElementById("authEmail")||{}).value || "";
+    const password = (document.getElementById("authPassword")||{}).value || "";
+    if (!email || !password){ ui.auth.error = T.authFillBoth; renderSettingsModal(); return; }
+    ui.auth.busy = true; ui.auth.error = ""; renderSettingsModal();
+    try {
+      if (ui.auth.mode === "signup"){
+        const { error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        ui.auth.busy = false;
+        ui.auth.error = "";
+        showToast(T.authCheckEmail, "pr");
+        renderSettingsModal();
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        ui.auth.busy = false;
+        sound("select");
+        renderSettingsModal();
+      }
+    } catch(e){
+      ui.auth.busy = false;
+      ui.auth.error = e.message || String(e);
+      renderSettingsModal();
+    }
+  }
+
+  function toggleAuthMode(){
+    ui.auth.mode = ui.auth.mode === "signin" ? "signup" : "signin";
+    ui.auth.error = "";
+    renderSettingsModal();
+  }
+
+  async function signOutCloud(){
+    if (!sb) return;
+    await sb.auth.signOut();
+    supaUser = null;
+    sound("tap");
+    renderSettingsModal();
+  }
 
   /* ---------------------------------------------------------------------
      Date / Format Helpers
@@ -184,22 +681,17 @@
   function fmtDateLabel(ds){
     const today = todayStr();
     const yesterday = dateStr(addDays(new Date(), -1));
-    if (ds === today) return "Сегодня";
-    if (ds === yesterday) return "Вчера";
+    if (ds === today) return T.today;
+    if (ds === yesterday) return T.yesterday;
     const d = new Date(ds + "T00:00:00");
-    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+    return d.toLocaleDateString(LOCALE_TAGS[lang], { day: "numeric", month: "short" });
   }
 
   function todayLongLabel(){
-    return new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+    return new Date().toLocaleDateString(LOCALE_TAGS[lang], { weekday: "long", day: "numeric", month: "long" });
   }
 
-  function pluralRu(n, one, few, many){
-    const mod10 = n % 10, mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few;
-    return many;
-  }
+  function dayName(idx){ return DAY_NAMES[lang][idx]; }
 
   function epley(weight, reps){ return weight * (1 + reps/30); }
 
@@ -298,8 +790,14 @@
     return [...set];
   }
 
-  function bestFor(exercise){
+  function exerciseSides(exercise){
     const sets = allSets().filter(s => s.exercise === exercise);
+    const sides = new Set(sets.map(s => s.side || null));
+    return [...sides];
+  }
+
+  function bestFor(exercise, side){
+    const sets = allSets().filter(s => s.exercise === exercise && (s.side || null) === (side || null));
     if (!sets.length) return null;
     let maxWeight = sets[0], maxEpley = sets[0], maxEpleyVal = epley(sets[0].weight, sets[0].reps);
     for (const s of sets){
@@ -310,8 +808,15 @@
     return { maxWeight, maxEpley, maxEpleyVal };
   }
 
-  function lastSetFor(exercise){
-    const sets = allSets().filter(s => s.exercise === exercise).sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+  function setBadges(exercise, setObj){
+    const best = bestFor(exercise, setObj.side || null);
+    if (!best) return { isWeightPR: false, isEpleyPR: false };
+    return { isWeightPR: best.maxWeight.id === setObj.id, isEpleyPR: best.maxEpley.id === setObj.id };
+  }
+
+  function lastSetFor(exercise, side){
+    const sets = allSets().filter(s => s.exercise === exercise && (s.side || null) === (side || null))
+      .sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
     return sets[0] || null;
   }
 
@@ -337,14 +842,14 @@
     return weeks;
   }
 
-  function rpeHint(v){
+  function rpeHintText(v){
     v = parseFloat(v);
-    if (v >= 10) return "Отказ — больше ни одного повторения";
-    if (v >= 9) return "Остался 1 повтор в запасе";
-    if (v >= 8) return "Остались 2 повтора в запасе";
-    if (v >= 7) return "Остались 2-3 повтора в запасе";
-    if (v >= 5) return "Умеренно, есть запас";
-    return "Легко";
+    if (v >= 10) return T.rpeHint10;
+    if (v >= 9) return T.rpeHint9;
+    if (v >= 8) return T.rpeHint8;
+    if (v >= 7) return T.rpeHint7;
+    if (v >= 5) return T.rpeHintModerate;
+    return T.rpeHintEasy;
   }
 
   /* ---------------------------------------------------------------------
@@ -357,7 +862,8 @@
   }
 
   function backButtonHtml(){
-    return `<button data-action="nav-back" class="tap w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-zinc-300 shrink-0 active:bg-zinc-900"><i data-lucide="chevron-left" class="w-7 h-7"></i></button>`;
+    const icon = RTL_LANGS.includes(lang) ? "chevron-right" : "chevron-left";
+    return `<button data-action="nav-back" class="tap w-11 h-11 -ms-2 rounded-full flex items-center justify-center text-zinc-300 shrink-0 active:bg-zinc-900"><i data-lucide="${icon}" class="w-7 h-7"></i></button>`;
   }
 
   function streakBadgeHtml(){
@@ -383,6 +889,11 @@
     toastTimer = setTimeout(() => { host.innerHTML = ""; }, 2600);
   }
 
+  function navHeight(){
+    const nav = document.getElementById("bottomNav");
+    return nav ? nav.getBoundingClientRect().height : 76;
+  }
+
   /* ---------------------------------------------------------------------
      Render: Dispatch, Header, Nav
   --------------------------------------------------------------------- */
@@ -393,6 +904,7 @@
     else if (ui.tab === "records") renderRecords();
     else renderPhotos();
     renderNav();
+    renderFab();
     lucide.createIcons();
   }
 
@@ -401,7 +913,20 @@
       const active = btn.dataset.tab === ui.tab;
       btn.className = "nav-btn nav-pill tap flex-1 flex flex-col items-center gap-1 py-3 mx-0.5 rounded-2xl " +
         (active ? "text-emerald-400 bg-emerald-500/10 scale-[1.02]" : "text-zinc-500 bg-transparent");
+      const label = btn.querySelector("[data-nav-label]");
+      if (label) label.textContent = T[label.dataset.navLabel];
     });
+  }
+
+  function renderFab(){
+    const host = document.getElementById("fabHost");
+    if (ui.timer.active){ host.innerHTML = ""; return; }
+    const offset = navHeight() + 16;
+    const dirClass = RTL_LANGS.includes(lang) ? "left-4" : "right-4";
+    host.innerHTML = `
+      <button data-action="manual-timer" style="bottom:${offset}px" class="tap fixed ${dirClass} z-30 w-14 h-14 rounded-full bg-zinc-900/95 backdrop-blur border border-zinc-800 text-emerald-400 flex items-center justify-center shadow-2xl active:bg-zinc-800">
+        <i data-lucide="timer" class="w-6 h-6"></i>
+      </button>`;
   }
 
   function renderHeader(){
@@ -413,18 +938,18 @@
         left = backButtonHtml();
         title = `<div class="font-bold text-white truncate max-w-[180px]">${escapeHtml(ui.workout.activeExercise)}</div>`;
       } else {
-        title = `<div><div class="font-bold text-white text-lg leading-tight">Моя тренировка</div><div class="text-xs text-zinc-500">${todayLongLabel()}</div></div>`;
+        title = `<div><div class="font-bold text-white text-lg leading-tight">${T.titleWorkout}</div><div class="text-xs text-zinc-500">${todayLongLabel()}</div></div>`;
         right = streakBadgeHtml();
       }
     } else if (ui.tab === "schedule"){
       if (ui.schedule.view === "day"){
         left = backButtonHtml();
-        title = `<div class="font-bold text-white">${DAY_FULL[DAY_KEYS.indexOf(ui.schedule.activeDay)]}</div>`;
-      } else title = `<div class="font-bold text-white text-lg">Расписание</div>`;
+        title = `<div class="font-bold text-white">${dayName(DAY_KEYS.indexOf(ui.schedule.activeDay))}</div>`;
+      } else title = `<div class="font-bold text-white text-lg">${T.titleSchedule}</div>`;
     } else if (ui.tab === "records"){
-      title = `<div class="font-bold text-white text-lg">Рекорды</div>`;
+      title = `<div class="font-bold text-white text-lg">${T.titleRecords}</div>`;
     } else {
-      title = `<div class="font-bold text-white text-lg">Фото-прогресс</div>`;
+      title = `<div class="font-bold text-white text-lg">${T.titlePhotos}</div>`;
     }
 
     el.innerHTML = `
@@ -462,7 +987,7 @@
   }
 
   /* ---------------------------------------------------------------------
-     Workout Tab
+     Workout Tab — List
   --------------------------------------------------------------------- */
   function renderWorkoutList(){
     const todayKey = getTodayKey();
@@ -475,59 +1000,97 @@
           <div class="w-20 h-20 rounded-full bg-zinc-900 flex items-center justify-center mb-5">
             <i data-lucide="moon" class="w-9 h-9 text-violet-400"></i>
           </div>
-          <div class="text-xl font-bold text-zinc-100 mb-1.5">Сегодня тренировки нет</div>
-          <div class="text-zinc-500">Отдыхай! 💤</div>
-        </div>`;
-      return;
-    }
-    if (!day.exercises.length){
-      content.innerHTML = `
-        <div class="flex flex-col items-center justify-center text-center py-24 px-6">
-          <i data-lucide="list-plus" class="w-10 h-10 text-zinc-700 mb-4"></i>
-          <div class="text-zinc-400 mb-4">На сегодня ещё нет упражнений</div>
-          <button data-action="goto-today-schedule" class="tap px-6 py-3.5 rounded-full bg-emerald-500 text-zinc-950 font-bold active:bg-emerald-400">Настроить расписание</button>
+          <div class="text-xl font-bold text-zinc-100 mb-1.5">${T.restTitle}</div>
+          <div class="text-zinc-500">${T.restSubtitle}</div>
         </div>`;
       return;
     }
 
     const today = getSession(todayStr(), false);
-    const rows = day.exercises.map((ex, i) => {
-      const setsCount = today ? today.sets.filter(s => s.exercise === ex).length : 0;
-      const best = bestFor(ex);
-      const subtitle = setsCount
-        ? setsCount + " " + pluralRu(setsCount, "подход", "подхода", "подходов") + " сегодня"
-        : (best ? "Лучший: " + best.maxWeight.weight + "кг × " + best.maxWeight.reps : "Ещё нет данных");
-      const img = state.exerciseImages[ex];
-      const thumb = img
-        ? `<img src="${img}" class="w-14 h-14 rounded-2xl object-cover shrink-0" />`
-        : `<div class="w-14 h-14 rounded-2xl bg-zinc-800 flex items-center justify-center shrink-0"><i data-lucide="dumbbell" class="w-6 h-6 text-zinc-700"></i></div>`;
-      return `
-      <div data-drag-item data-index="${i}" class="anim-pop flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-3xl pl-2 pr-3 py-2.5 mb-3">
-        <div data-drag-handle data-context="workout" class="tap w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-zinc-600 touch-none active:bg-zinc-800"><i data-lucide="grip-vertical" class="w-6 h-6"></i></div>
-        <button data-action="open-exercise" data-exercise="${escapeHtml(ex)}" class="tap flex-1 min-w-0 flex items-center gap-3 justify-between text-left py-1">
-          <div class="flex items-center gap-3 min-w-0">
-            ${thumb}
-            <div class="min-w-0">
-              <div class="font-bold text-zinc-100 truncate text-[15px]">${escapeHtml(ex)}</div>
-              <div class="text-xs text-zinc-500 truncate mt-0.5">${subtitle}</div>
+    let rows = "";
+    if (!day.exercises.length){
+      rows = `
+        <div class="flex flex-col items-center justify-center text-center py-16 px-6">
+          <i data-lucide="list-plus" class="w-10 h-10 text-zinc-700 mb-4"></i>
+          <div class="text-zinc-400 mb-4">${T.noExercisesToday}</div>
+          <button data-action="goto-today-schedule" class="tap px-6 py-3.5 rounded-full bg-emerald-500 text-zinc-950 font-bold active:bg-emerald-400">${T.configureSchedule}</button>
+        </div>`;
+    } else {
+      rows = `<div class="pt-2 drag-list">` + day.exercises.map((ex, i) => {
+        const setsCount = today ? today.sets.filter(s => s.exercise === ex).length : 0;
+        const best = bestFor(ex, null) || bestFor(ex, "left") || bestFor(ex, "right");
+        const subtitle = setsCount
+          ? setsCount + " " + pluralize(lang, setsCount, SETS_WORD[lang]) + " · " + T.today.toLowerCase()
+          : (best ? T.bestLabel + " " + best.maxWeight.weight + "кг × " + best.maxWeight.reps : T.noDataYet);
+        const img = state.exerciseImages[ex];
+        const thumb = img
+          ? `<img src="${img}" class="w-14 h-14 rounded-2xl object-cover shrink-0" />`
+          : `<div class="w-14 h-14 rounded-2xl bg-zinc-800 flex items-center justify-center shrink-0"><i data-lucide="dumbbell" class="w-6 h-6 text-zinc-700"></i></div>`;
+        const chevron = RTL_LANGS.includes(lang) ? "chevron-left" : "chevron-right";
+        return `
+        <div data-drag-item data-index="${i}" class="anim-pop flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-3xl ps-2 pe-3 py-2.5 mb-3">
+          <div data-drag-handle data-context="workout" class="tap w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-zinc-600 touch-none active:bg-zinc-800"><i data-lucide="grip-vertical" class="w-6 h-6"></i></div>
+          <button data-action="open-exercise" data-exercise="${escapeHtml(ex)}" class="tap flex-1 min-w-0 flex items-center gap-3 justify-between text-left py-1">
+            <div class="flex items-center gap-3 min-w-0">
+              ${thumb}
+              <div class="min-w-0">
+                <div class="font-bold text-zinc-100 truncate text-[15px]">${escapeHtml(ex)}</div>
+                <div class="text-xs text-zinc-500 truncate mt-0.5">${subtitle}</div>
+              </div>
             </div>
-          </div>
-          <i data-lucide="chevron-right" class="w-6 h-6 text-zinc-600 shrink-0"></i>
-        </button>
-      </div>`;
-    }).join("");
+            <i data-lucide="${chevron}" class="w-6 h-6 text-zinc-600 shrink-0"></i>
+          </button>
+        </div>`;
+      }).join("") + `</div>`;
+    }
 
-    content.innerHTML = `<div class="pt-2 drag-list">${rows}</div>`;
+    const addForm = ui.workout.addingExercise ? `
+      <div class="anim-pop flex items-center gap-2 mt-1">
+        <input id="quickAddExerciseInput" data-field="quick-add-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" list="knownExercisesList" />
+        <button data-action="quick-add-exercise" class="tap w-14 h-14 shrink-0 rounded-2xl bg-emerald-500 text-zinc-950 flex items-center justify-center active:bg-emerald-400"><i data-lucide="check" class="w-6 h-6"></i></button>
+      </div>
+      <datalist id="knownExercisesList">${state.exercises.map(e => `<option value="${escapeHtml(e)}"></option>`).join("")}</datalist>` : `
+      <button data-action="toggle-quick-add" class="tap w-full flex items-center justify-center gap-2 border-2 border-dashed border-zinc-800 rounded-2xl py-4 mt-1 text-zinc-500 font-bold active:bg-zinc-900/50">
+        <i data-lucide="plus" class="w-5 h-5"></i> ${T.addExerciseBtn}
+      </button>`;
+
+    content.innerHTML = rows + addForm;
   }
 
+  function toggleQuickAdd(){
+    sound("tap");
+    ui.workout.addingExercise = !ui.workout.addingExercise;
+    render();
+    if (ui.workout.addingExercise) requestAnimationFrame(() => { const el = document.getElementById("quickAddExerciseInput"); if (el) el.focus(); });
+  }
+
+  function quickAddExercise(){
+    const input = document.getElementById("quickAddExerciseInput");
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) { ui.workout.addingExercise = false; render(); return; }
+    const todayKey = getTodayKey();
+    if (!state.schedule[todayKey].exercises.includes(name)) state.schedule[todayKey].exercises.push(name);
+    if (!state.exercises.includes(name)) state.exercises.push(name);
+    ui.workout.addingExercise = false;
+    saveState(); sound("select"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Workout Tab — Logging
+  --------------------------------------------------------------------- */
   function openExercise(ex){
     sound("select");
     ui.workout.activeExercise = ex;
     ui.workout.view = "logging";
     ui.workout.rpeOpen = false;
-    const last = lastSetFor(ex);
+    ui.workout.splitSides = false;
+    const last = lastSetFor(ex, null);
     ui.weight = last ? last.weight : 20;
     ui.reps = last ? last.reps : 5;
+    const lastL = lastSetFor(ex, "left"), lastR = lastSetFor(ex, "right");
+    ui.weightL = lastL ? lastL.weight : 20; ui.repsL = lastL ? lastL.reps : 5;
+    ui.weightR = lastR ? lastR.weight : 20; ui.repsR = lastR ? lastR.reps : 5;
     ui.rpe = (last && last.rpe != null) ? last.rpe : 7;
     render();
   }
@@ -540,64 +1103,171 @@
     const setsToday = today ? today.sets.filter(s => s.exercise === ex) : [];
     const content = document.getElementById("content");
     const img = state.exerciseImages[ex];
+    const note = state.exerciseNotes[ex];
 
     const heroHtml = `
-      <button data-action="pick-exercise-image" data-exercise="${escapeHtml(ex)}" class="tap relative w-full aspect-[16/9] rounded-3xl overflow-hidden mb-4 bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-        ${img ? `<img src="${img}" class="w-full h-full object-cover" />` : `<div class="flex flex-col items-center text-zinc-600"><i data-lucide="image-plus" class="w-8 h-8 mb-1.5"></i><span class="text-xs font-semibold">Добавить фото упражнения</span></div>`}
-        ${img ? `<div class="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center"><i data-lucide="pencil" class="w-4 h-4 text-white"></i></div>` : ""}
+      <div class="relative w-full aspect-[16/9] rounded-3xl overflow-hidden mb-4 bg-zinc-900 border border-zinc-800">
+        <button data-action="${img ? "open-image-lightbox" : "pick-exercise-image"}" data-exercise="${escapeHtml(ex)}" class="tap w-full h-full flex items-center justify-center">
+          ${img ? `<img src="${img}" class="w-full h-full object-cover" />` : `<div class="flex flex-col items-center text-zinc-600"><i data-lucide="image-plus" class="w-8 h-8 mb-1.5"></i><span class="text-xs font-semibold">${T.addExercisePhotoLabel}</span></div>`}
+        </button>
+        ${img ? `<button data-action="pick-exercise-image" data-exercise="${escapeHtml(ex)}" class="tap absolute bottom-3 end-3 w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center"><i data-lucide="pencil" class="w-4 h-4 text-white"></i></button>` : ""}
+      </div>`;
+
+    const noteHtml = note ? `
+      <div class="anim-pop flex items-start gap-3 bg-violet-500/10 border border-violet-500/30 rounded-2xl px-4 py-3.5 mb-4">
+        <i data-lucide="sticky-note" class="w-5 h-5 text-violet-400 shrink-0 mt-0.5"></i>
+        <div class="flex-1 min-w-0 text-sm text-violet-100">${escapeHtml(note)}</div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button data-action="edit-note" class="tap w-8 h-8 rounded-full text-violet-300 active:bg-violet-500/20 flex items-center justify-center"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+          <button data-action="delete-note" class="tap w-8 h-8 rounded-full text-violet-300 active:bg-violet-500/20 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+      </div>` : `
+      <button data-action="edit-note" class="tap w-full flex items-center justify-center gap-2 border-2 border-dashed border-zinc-800 rounded-2xl py-3 mb-4 text-zinc-500 font-semibold text-sm active:bg-zinc-900/50">
+        <i data-lucide="sticky-note" class="w-4 h-4"></i> ${T.addNote}
       </button>`;
 
-    const setsListHtml = setsToday.length ? `<div class="space-y-2.5 mb-4">` + setsToday.map((s,i) => {
-      const e1 = epley(s.weight, s.reps);
-      const badge = (s.isWeightPR || s.isEpleyPR) ? `<span class="text-amber-400 text-xs font-bold flex items-center gap-0.5 shrink-0"><i data-lucide="trophy" class="w-3.5 h-3.5"></i>PR</span>` : "";
-      const rpeTag = (s.rpe != null) ? `<span class="text-[11px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded-md shrink-0">RPE ${s.rpe}</span>` : "";
-      return `<div class="anim-pop flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 ${(s.isWeightPR||s.isEpleyPR)?'flash-pr border-violet-500/40':''}">
+    const groups = [];
+    const groupIndex = {};
+    setsToday.forEach(s => {
+      const gid = s.groupId || s.id;
+      if (!(gid in groupIndex)){ groupIndex[gid] = groups.length; groups.push([]); }
+      groups[groupIndex[gid]].push(s);
+    });
+
+    const setsListHtml = groups.length ? `<div class="space-y-2.5 mb-4">` + groups.map((items, i) => {
+      const anyPR = items.some(s => { const b = setBadges(ex, s); return b.isWeightPR || b.isEpleyPR; });
+      const badge = anyPR ? `<span class="text-amber-400 text-xs font-bold flex items-center gap-0.5 shrink-0"><i data-lucide="trophy" class="w-3.5 h-3.5"></i>PR</span>` : "";
+      const rpe = items.find(s => s.rpe != null);
+      const rpeTag = rpe ? `<span class="text-[11px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded-md shrink-0">RPE ${rpe.rpe}</span>` : "";
+      const deleteIds = items.map(s => s.id).join(",");
+
+      if (items.length > 1){
+        const sideRows = items.map(s => {
+          const sb = setBadges(ex, s);
+          const isPR = sb.isWeightPR || sb.isEpleyPR;
+          const sideLabel = s.side === "left" ? T.leftLabel : T.rightLabel;
+          const e1 = epley(s.weight, s.reps).toFixed(1);
+          return `<div class="flex items-center gap-2 mt-1.5 first:mt-0">
+            <span class="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-1 rounded-md shrink-0 w-16 text-center">${sideLabel}</span>
+            <span class="text-zinc-200 text-sm font-semibold shrink-0">${s.weight}кг × ${s.reps}</span>
+            <span class="text-zinc-600 text-xs truncate">~1ПМ ${e1}кг</span>
+            ${isPR ? `<span class="text-amber-400 text-xs font-bold flex items-center gap-0.5 shrink-0 ms-auto"><i data-lucide="trophy" class="w-3.5 h-3.5"></i>PR</span>` : ""}
+          </div>`;
+        }).join("");
+
+        return `<div class="anim-pop flex items-start gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 ${anyPR?'flash-pr border-violet-500/40':''}">
+          <div class="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-5 h-5"></i></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-zinc-100 flex items-center gap-2">${T.setWord} ${i+1} ${rpeTag}</div>
+            ${sideRows}
+          </div>
+          <button data-action="delete-set" data-session="${today.id}" data-set="${deleteIds}" class="tap w-9 h-9 rounded-full text-zinc-600 active:text-red-400 active:bg-red-500/10 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>`;
+      }
+
+      const s = items[0];
+      const sideTag = s.side ? `<span class="text-[11px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded-md shrink-0">${s.side === "left" ? T.leftLabel : T.rightLabel}</span>` : "";
+      const summary = `<span class="text-zinc-300">${s.weight}кг × ${s.reps}</span> ${sideTag}`;
+      const estLine = epley(s.weight, s.reps).toFixed(1) + "кг";
+
+      return `<div class="anim-pop flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 ${anyPR?'flash-pr border-violet-500/40':''}">
         <div class="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><i data-lucide="check" class="w-5 h-5"></i></div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-zinc-100 flex items-center gap-2 flex-wrap">Сет ${i+1} · <span class="text-zinc-300">${s.weight}кг × ${s.reps}</span> ${rpeTag}</div>
-          <div class="text-xs text-zinc-500 mt-0.5">~1ПМ ${e1.toFixed(1)}кг</div>
+          <div class="text-sm font-semibold text-zinc-100 flex items-center gap-2 flex-wrap">${T.setWord} ${i+1} · ${summary} ${rpeTag}</div>
+          <div class="text-xs text-zinc-500 mt-0.5">${T.estOneRm} ${estLine}</div>
         </div>
         ${badge}
-        <button data-action="delete-set" data-session="${today.id}" data-set="${s.id}" class="tap w-9 h-9 rounded-full text-zinc-600 active:text-red-400 active:bg-red-500/10 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button data-action="delete-set" data-session="${today.id}" data-set="${deleteIds}" class="tap w-9 h-9 rounded-full text-zinc-600 active:text-red-400 active:bg-red-500/10 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>`;
-    }).join("") + `</div>` : `<div class="text-center text-zinc-600 text-sm py-6">Пока нет подходов сегодня</div>`;
+    }).join("") + `</div>` : `<div class="text-center text-zinc-600 text-sm py-6">${T.noSetsToday}</div>`;
 
     const rpeSection = ui.workout.rpeOpen ? `
       <div class="anim-pop pt-1">
         <div class="flex items-center justify-between mb-2">
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500">RPE (СЛОЖНОСТЬ)</div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500">${T.rpeLabel}</div>
           <div class="text-xl font-extrabold text-violet-300" id="rpeValueLabel">${ui.rpe}</div>
         </div>
         <input id="rpeSlider" data-field="rpe" type="range" min="1" max="10" step="0.5" value="${ui.rpe}" class="w-full accent-violet-500" />
-        <div class="text-xs text-zinc-500 mt-1.5" id="rpeHint">${rpeHint(ui.rpe)}</div>
+        <div class="text-xs text-zinc-500 mt-1.5" id="rpeHint">${rpeHintText(ui.rpe)}</div>
       </div>` : `
-      <button data-action="toggle-rpe" class="tap text-sm font-bold text-zinc-500 flex items-center gap-1.5 py-2 active:text-zinc-300"><i data-lucide="plus-circle" class="w-[18px] h-[18px]"></i> Добавить RPE</button>`;
+      <button data-action="toggle-rpe" class="tap text-sm font-bold text-zinc-500 flex items-center gap-1.5 py-2 active:text-zinc-300"><i data-lucide="plus-circle" class="w-[18px] h-[18px]"></i> ${T.addRpe}</button>`;
 
-    content.innerHTML = `
-      ${heroHtml}
-      ${setsListHtml}
-      <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
+    const splitToggleRow = `
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-bold text-zinc-400 flex items-center gap-1.5"><i data-lucide="split" class="w-4 h-4"></i> ${T.splitToggleLabel}</div>
+        ${toggleSwitchHtml(ui.workout.splitSides, "toggle-split-sides")}
+      </div>`;
+
+    const entryFields = ui.workout.splitSides ? `
+      <div class="grid grid-cols-2 gap-3">
         <div>
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">ВЕС (КГ)</div>
+          <div class="text-[11px] font-bold tracking-wider text-sky-400 mb-2 text-center">${T.leftLabel}</div>
+          <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.weightLabel}</div>
+          <div class="flex items-center gap-1.5 mb-2">
+            <button data-action="step-weight-side" data-side="L" data-delta="-2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="weightInputL" data-field="weightL" type="number" inputmode="decimal" step="2.5" value="${ui.weightL}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
+            <button data-action="step-weight-side" data-side="L" data-delta="2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+          </div>
+          <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.repsLabel}</div>
+          <div class="flex items-center gap-1.5">
+            <button data-action="step-reps-side" data-side="L" data-delta="-1" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="repsInputL" data-field="repsL" type="number" inputmode="numeric" step="1" value="${ui.repsL}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
+            <button data-action="step-reps-side" data-side="L" data-delta="1" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+          </div>
+        </div>
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-sky-400 mb-2 text-center">${T.rightLabel}</div>
+          <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.weightLabel}</div>
+          <div class="flex items-center gap-1.5 mb-2">
+            <button data-action="step-weight-side" data-side="R" data-delta="-2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="weightInputR" data-field="weightR" type="number" inputmode="decimal" step="2.5" value="${ui.weightR}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
+            <button data-action="step-weight-side" data-side="R" data-delta="2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+          </div>
+          <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.repsLabel}</div>
+          <div class="flex items-center gap-1.5">
+            <button data-action="step-reps-side" data-side="R" data-delta="-1" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="repsInputR" data-field="repsR" type="number" inputmode="numeric" step="1" value="${ui.repsR}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
+            <button data-action="step-reps-side" data-side="R" data-delta="1" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+          </div>
+        </div>
+      </div>` : `
+      <div>
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">${T.weightLabel}</div>
           <div class="flex items-center gap-3">
             <button data-action="step-weight" data-delta="-2.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
             <input id="weightInput" data-field="weight" type="number" inputmode="decimal" step="2.5" value="${ui.weight}" class="flex-1 min-w-0 w-0 text-center bg-transparent text-5xl font-extrabold text-white outline-none" />
             <button data-action="step-weight" data-delta="2.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
           </div>
         </div>
-        <div>
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">ПОВТОРЕНИЯ</div>
+        <div class="mt-5">
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">${T.repsLabel}</div>
           <div class="flex items-center gap-3">
             <button data-action="step-reps" data-delta="-1" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
             <input id="repsInput" data-field="reps" type="number" inputmode="numeric" step="1" value="${ui.reps}" class="flex-1 min-w-0 w-0 text-center bg-transparent text-5xl font-extrabold text-white outline-none" />
             <button data-action="step-reps" data-delta="1" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
           </div>
         </div>
+      </div>`;
+
+    content.innerHTML = `
+      ${heroHtml}
+      ${noteHtml}
+      ${setsListHtml}
+      <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
+        ${splitToggleRow}
+        ${entryFields}
         ${rpeSection}
         <button data-action="log-set" class="tap glow-pulse w-full py-5 rounded-[28px] bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-xl font-extrabold flex items-center justify-center gap-2">
-          <i data-lucide="check-circle-2" class="w-7 h-7"></i> ЗАВЕРШИТЬ ПОДХОД
+          <i data-lucide="check-circle-2" class="w-7 h-7"></i> ${T.logSetBtn}
         </button>
       </div>`;
+  }
+
+  function toggleSplitSides(){
+    sound("tap");
+    ui.workout.splitSides = !ui.workout.splitSides;
+    render();
   }
 
   function stepWeight(delta){
@@ -616,33 +1286,72 @@
     pulse(input); sound("step"); vibrate(8);
   }
 
+  function stepWeightSide(side, delta){
+    const id = side === "L" ? "weightInputL" : "weightInputR";
+    const key = side === "L" ? "weightL" : "weightR";
+    const input = document.getElementById(id);
+    let v = parseFloat(input.value) || 0;
+    v = Math.max(0, Math.round((v + delta) * 100) / 100);
+    input.value = v; ui[key] = v;
+    pulse(input); sound("step"); vibrate(8);
+  }
+
+  function stepRepsSide(side, delta){
+    const id = side === "L" ? "repsInputL" : "repsInputR";
+    const key = side === "L" ? "repsL" : "repsR";
+    const input = document.getElementById(id);
+    let v = parseInt(input.value) || 0;
+    v = Math.max(0, v + delta);
+    input.value = v; ui[key] = v;
+    pulse(input); sound("step"); vibrate(8);
+  }
+
   function logSet(){
     const ex = ui.workout.activeExercise;
     if (!ex) return;
-    const weight = parseFloat(document.getElementById("weightInput").value) || 0;
-    const reps = parseInt(document.getElementById("repsInput").value) || 0;
-    if (weight <= 0 || reps <= 0){ showToast("Введите вес и повторения", "warn"); return; }
-
-    const prevBest = bestFor(ex);
-    const newEpley = epley(weight, reps);
-    const isWeightPR = !prevBest || weight > prevBest.maxWeight.weight;
-    const isEpleyPR = !prevBest || newEpley > prevBest.maxEpleyVal;
-
+    const rpe = ui.workout.rpeOpen ? ui.rpe : null;
     const session = getSession(todayStr(), true);
-    session.sets.push({
-      id: uid(), exercise: ex, weight, reps,
-      rpe: ui.workout.rpeOpen ? ui.rpe : null,
-      time: new Date().toTimeString().slice(0,8),
-      isWeightPR, isEpleyPR
-    });
-    saveState();
-    vibrate(isWeightPR||isEpleyPR ? [15,40,15] : 15);
-    sound(isWeightPR||isEpleyPR ? "pr" : "log");
-    render();
+    const now = new Date();
+    let anyPR = false;
+    const toastMsgs = [];
 
-    if (isWeightPR && isEpleyPR) showToast("Новый рекорд! " + weight + "кг × " + reps + " · ~1ПМ " + newEpley.toFixed(1) + "кг", "pr");
-    else if (isWeightPR) showToast("Новый рекорд по весу: " + weight + "кг!", "pr");
-    else if (isEpleyPR) showToast("Новый расчётный 1ПМ: " + newEpley.toFixed(1) + "кг!", "pr");
+    function commitOne(weight, reps, side, groupId){
+      if (weight <= 0 || reps <= 0) return false;
+      const prevBest = bestFor(ex, side);
+      const newEpley = epley(weight, reps);
+      const isWeightPR = !prevBest || weight > prevBest.maxWeight.weight;
+      const isEpleyPR = !prevBest || newEpley > prevBest.maxEpleyVal;
+      session.sets.push({ id: uid(), groupId: groupId || null, exercise: ex, weight, reps, side: side || null, rpe, time: now.toTimeString().slice(0,8) + "." + session.sets.length });
+      if (isWeightPR && isEpleyPR) toastMsgs.push(T.prBoth(weight, reps, newEpley.toFixed(1)));
+      else if (isWeightPR) toastMsgs.push(T.prWeight(weight));
+      else if (isEpleyPR) toastMsgs.push(T.prEpley(newEpley.toFixed(1)));
+      if (isWeightPR || isEpleyPR) anyPR = true;
+      return true;
+    }
+
+    let logged = false;
+    if (ui.workout.splitSides){
+      const wL = parseFloat(document.getElementById("weightInputL").value) || 0;
+      const rL = parseInt(document.getElementById("repsInputL").value) || 0;
+      const wR = parseFloat(document.getElementById("weightInputR").value) || 0;
+      const rR = parseInt(document.getElementById("repsInputR").value) || 0;
+      const groupId = uid();
+      const okL = commitOne(wL, rL, "left", groupId);
+      const okR = commitOne(wR, rR, "right", groupId);
+      logged = okL || okR;
+    } else {
+      const weight = parseFloat(document.getElementById("weightInput").value) || 0;
+      const reps = parseInt(document.getElementById("repsInput").value) || 0;
+      logged = commitOne(weight, reps, null);
+    }
+
+    if (!logged){ showToast(T.enterWeightReps, "warn"); return; }
+
+    saveState();
+    vibrate(anyPR ? [15,40,15] : 15);
+    sound(anyPR ? "pr" : "log");
+    render();
+    toastMsgs.forEach((msg, i) => setTimeout(() => showToast(msg, "pr"), i * 400));
 
     if (state.timerSettings.skipPrompt) startRestTimer(state.timerSettings.defaultSeconds);
     else openTimerPicker();
@@ -651,9 +1360,78 @@
   function deleteSet(sessionId, setId){
     const session = state.sessions.find(s => s.id === sessionId);
     if (!session) return;
-    session.sets = session.sets.filter(s => s.id !== setId);
+    const ids = setId.split(",");
+    session.sets = session.sets.filter(s => !ids.includes(s.id));
     if (session.sets.length === 0) state.sessions = state.sessions.filter(s => s.id !== sessionId);
     saveState(); sound("delete"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Exercise Notes ("message to yourself")
+  --------------------------------------------------------------------- */
+  function editNote(){
+    sound("tap");
+    ui.noteEditing = true;
+    renderNoteModal();
+  }
+  function closeNoteModal(){ ui.noteEditing = false; document.getElementById("modalHost").innerHTML = ""; }
+  function renderNoteModal(){
+    const ex = ui.workout.activeExercise;
+    const current = state.exerciseNotes[ex] || "";
+    const host = document.getElementById("modalHost");
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-note-modal" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-lg text-zinc-100">${T.noteSheetTitle}</div>
+          <button data-action="close-note-modal" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <textarea id="noteTextarea" data-field="note-text" rows="4" maxlength="200" placeholder="${T.notePlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-violet-500/50 resize-none">${escapeHtml(current)}</textarea>
+        <button data-action="save-note" class="tap w-full py-4 rounded-2xl bg-violet-500 active:bg-violet-400 text-zinc-950 text-lg font-extrabold">${T.saveNote}</button>
+      </div>
+    </div>`;
+    lucide.createIcons();
+    requestAnimationFrame(() => { const el = document.getElementById("noteTextarea"); if (el) el.focus(); });
+  }
+  function saveNoteFromModal(){
+    const ex = ui.workout.activeExercise;
+    const text = document.getElementById("noteTextarea").value.trim();
+    if (text) state.exerciseNotes[ex] = text; else delete state.exerciseNotes[ex];
+    saveState(); sound("select");
+    closeNoteModal(); render();
+  }
+  function deleteNote(){
+    const ex = ui.workout.activeExercise;
+    delete state.exerciseNotes[ex];
+    saveState(); sound("delete"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Exercise Image Lightbox
+  --------------------------------------------------------------------- */
+  function openImageLightbox(ex){
+    sound("tap");
+    ui.imageLightbox = ex;
+    renderImageLightbox();
+  }
+  function closeImageLightbox(){ ui.imageLightbox = null; document.getElementById("modalHost").innerHTML = ""; }
+  function renderImageLightbox(){
+    const ex = ui.imageLightbox;
+    const img = state.exerciseImages[ex];
+    if (!img) return;
+    const host = document.getElementById("modalHost");
+    host.innerHTML = `
+    <div data-action="close-image-lightbox" class="fixed inset-0 z-40 bg-black/95 flex flex-col">
+      <div class="flex items-center justify-end p-4 safe-top">
+        <button data-action="close-image-lightbox" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-300 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+        <img src="${img}" class="anim-lightbox max-w-full max-h-full object-contain rounded-2xl" />
+      </div>
+      <div class="text-center text-white font-bold text-lg pb-10 px-6">${escapeHtml(ex)}</div>
+    </div>`;
+    lucide.createIcons();
   }
 
   /* ---------------------------------------------------------------------
@@ -661,18 +1439,19 @@
   --------------------------------------------------------------------- */
   function renderScheduleList(){
     const content = document.getElementById("content");
+    const chevron = RTL_LANGS.includes(lang) ? "chevron-left" : "chevron-right";
     const rows = DAY_KEYS.map((key, i) => {
       const day = state.schedule[key];
       const count = day.exercises.length;
       return `
       <div data-action="open-day" data-day="${key}" class="tap w-full flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-2.5 cursor-pointer">
         <div>
-          <div class="font-bold text-zinc-100 text-[15px]">${DAY_FULL[i]}</div>
-          <div class="text-xs text-zinc-500 mt-0.5">${day.active ? (count + " " + pluralRu(count,"упражнение","упражнения","упражнений")) : "День отдыха"}</div>
+          <div class="font-bold text-zinc-100 text-[15px]">${dayName(i)}</div>
+          <div class="text-xs text-zinc-500 mt-0.5">${day.active ? (count + " " + pluralize(lang, count, EX_WORD[lang])) : T.restDay}</div>
         </div>
         <div class="flex items-center gap-3.5">
           ${toggleSwitchHtml(day.active, "toggle-day-active", `data-day="${key}"`)}
-          <i data-lucide="chevron-right" class="w-6 h-6 text-zinc-600"></i>
+          <i data-lucide="${chevron}" class="w-6 h-6 text-zinc-600"></i>
         </div>
       </div>`;
     }).join("");
@@ -694,15 +1473,21 @@
     const content = document.getElementById("content");
 
     const toggleRow = `
-      <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 mb-4">
-        <div class="font-bold text-zinc-100">Тренировочный день</div>
+      <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-3">
+        <div class="font-bold text-zinc-100">${T.workoutDay}</div>
         ${toggleSwitchHtml(day.active, "toggle-day-active", `data-day="${key}"`)}
       </div>`;
 
     if (!day.active){
-      content.innerHTML = toggleRow + `<div class="text-center text-zinc-600 text-sm py-10">День отдыха. Включите переключатель, чтобы добавить упражнения.</div>`;
+      content.innerHTML = toggleRow + `<div class="text-center text-zinc-600 text-sm py-10">${T.restDay}</div>`;
       return;
     }
+
+    const templateRow = `
+      <div class="grid grid-cols-2 gap-2.5 mb-4">
+        <button data-action="save-template" class="tap flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold text-sm active:bg-zinc-800"><i data-lucide="save" class="w-4 h-4"></i> ${T.saveTemplate}</button>
+        <button data-action="open-templates" class="tap flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold text-sm active:bg-zinc-800"><i data-lucide="clipboard-paste" class="w-4 h-4"></i> ${T.applyTemplate}</button>
+      </div>`;
 
     const rows = day.exercises.map((ex, i) => {
       const img = state.exerciseImages[ex];
@@ -710,7 +1495,7 @@
         ? `<img src="${img}" class="w-12 h-12 rounded-xl object-cover shrink-0" />`
         : `<div class="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0"><i data-lucide="image-plus" class="w-5 h-5 text-zinc-600"></i></div>`;
       return `
-      <div data-drag-item data-index="${i}" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-2xl pl-2 pr-2.5 py-2.5 mb-2.5">
+      <div data-drag-item data-index="${i}" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-2xl ps-2 pe-2.5 py-2.5 mb-2.5">
         <div data-drag-handle data-context="schedule" class="tap w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-zinc-600 touch-none active:bg-zinc-800"><i data-lucide="grip-vertical" class="w-6 h-6"></i></div>
         <button data-action="pick-exercise-image" data-exercise="${escapeHtml(ex)}" class="tap shrink-0">${thumb}</button>
         <div class="flex-1 font-semibold text-zinc-200 truncate px-1">${escapeHtml(ex)}</div>
@@ -718,16 +1503,16 @@
       </div>`;
     }).join("");
 
-    const rowsHtml = day.exercises.length ? `<div class="drag-list">${rows}</div>` : `<div class="text-center text-zinc-600 text-sm py-6">Пока нет упражнений</div>`;
+    const rowsHtml = day.exercises.length ? `<div class="drag-list">${rows}</div>` : `<div class="text-center text-zinc-600 text-sm py-6">${T.noExercisesToday}</div>`;
 
     const addForm = `
       <div class="flex items-center gap-2 mt-3">
-        <input id="newDayExerciseInput" data-field="new-day-exercise" type="text" placeholder="Название упражнения" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" list="knownExercisesList" />
+        <input id="newDayExerciseInput" data-field="new-day-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" list="knownExercisesList" />
         <button data-action="add-day-exercise" data-day="${key}" class="tap w-14 h-14 shrink-0 rounded-2xl bg-emerald-500 text-zinc-950 flex items-center justify-center active:bg-emerald-400"><i data-lucide="plus" class="w-6 h-6"></i></button>
       </div>
       <datalist id="knownExercisesList">${state.exercises.map(e => `<option value="${escapeHtml(e)}"></option>`).join("")}</datalist>`;
 
-    content.innerHTML = toggleRow + rowsHtml + addForm;
+    content.innerHTML = toggleRow + templateRow + rowsHtml + addForm;
   }
 
   function addDayExercise(dayKey){
@@ -744,6 +1529,90 @@
   function removeDayExercise(dayKey, index){
     state.schedule[dayKey].exercises.splice(index, 1);
     saveState(); sound("delete"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Day Templates
+  --------------------------------------------------------------------- */
+  function saveTemplate(){
+    sound("tap");
+    renderSaveTemplateModal();
+  }
+  function renderSaveTemplateModal(){
+    const host = document.getElementById("modalHost");
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-template-modal" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-lg text-zinc-100">${T.saveTemplate}</div>
+          <button data-action="close-template-modal" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <input id="templateNameInput" data-field="template-name" type="text" placeholder="${T.newTemplateNamePlaceholder}" maxlength="30" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+        <button data-action="confirm-save-template" class="tap w-full py-4 rounded-2xl bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-lg font-extrabold">${T.saveBtn}</button>
+      </div>
+    </div>`;
+    lucide.createIcons();
+    requestAnimationFrame(() => { const el = document.getElementById("templateNameInput"); if (el) el.focus(); });
+  }
+  function closeTemplateModal(){ document.getElementById("modalHost").innerHTML = ""; }
+  function confirmSaveTemplate(){
+    const input = document.getElementById("templateNameInput");
+    const name = input.value.trim();
+    if (!name) return;
+    const key = ui.schedule.activeDay;
+    state.dayTemplates.push({ id: uid(), name, exercises: [...state.schedule[key].exercises] });
+    saveState(); sound("select");
+    closeTemplateModal();
+    showToast(T.templateSaved, "pr");
+  }
+
+  function openTemplates(){
+    sound("tap");
+    ui.templatesOpen = true;
+    renderTemplatesModal();
+  }
+  function closeTemplatesModal(){ ui.templatesOpen = false; document.getElementById("modalHost").innerHTML = ""; }
+  function renderTemplatesModal(){
+    const host = document.getElementById("modalHost");
+    const rows = state.dayTemplates.length ? state.dayTemplates.map(tpl => `
+      <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 mb-2.5">
+        <button data-action="apply-template" data-id="${tpl.id}" class="tap flex-1 min-w-0 text-start">
+          <div class="font-bold text-zinc-100 truncate">${escapeHtml(tpl.name)}</div>
+          <div class="text-xs text-zinc-500 truncate mt-0.5">${tpl.exercises.map(escapeHtml).join(", ")}</div>
+        </button>
+        <button data-action="delete-template" data-id="${tpl.id}" class="tap w-10 h-10 rounded-full text-zinc-600 active:text-red-400 active:bg-red-500/10 flex items-center justify-center shrink-0"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+      </div>`).join("") : `<div class="text-center text-zinc-600 text-sm py-8">${T.noTemplates}</div>`;
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-templates-modal" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-bold text-lg text-zinc-100">${T.templatesTitle}</div>
+          <button data-action="close-templates-modal" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        ${rows}
+      </div>
+    </div>`;
+    lucide.createIcons();
+  }
+  function applyTemplate(id){
+    const tpl = state.dayTemplates.find(t => t.id === id);
+    if (!tpl) return;
+    const key = ui.schedule.activeDay;
+    if (state.schedule[key].exercises.length && !confirm(T.confirmApplyTemplate)) return;
+    state.schedule[key].exercises = [...tpl.exercises];
+    tpl.exercises.forEach(ex => { if (!state.exercises.includes(ex)) state.exercises.push(ex); });
+    saveState(); sound("select");
+    closeTemplatesModal();
+    showToast(T.templateApplied, "pr");
+    render();
+  }
+  function deleteTemplate(id){
+    if (!confirm(T.deleteTemplateConfirm)) return;
+    state.dayTemplates = state.dayTemplates.filter(t => t.id !== id);
+    saveState(); sound("delete");
+    renderTemplatesModal();
   }
 
   /* ---------------------------------------------------------------------
@@ -825,96 +1694,150 @@
   /* ---------------------------------------------------------------------
      Records Tab
   --------------------------------------------------------------------- */
-  function renderRecords(){
-    const names = allLoggedExerciseNames();
-    const content = document.getElementById("content");
-    if (!names.length){
-      content.innerHTML = `<div class="text-center py-20 text-zinc-600"><i data-lucide="trophy" class="w-10 h-10 mx-auto mb-3 opacity-40"></i><div class="text-sm">Логируйте подходы, чтобы увидеть рекорды</div></div>`;
-      return;
-    }
-    const cards = names.map(ex => {
-      const b = bestFor(ex);
-      return `
-      <div class="anim-pop bg-gradient-to-br from-zinc-900 to-zinc-900/60 border border-violet-500/20 rounded-3xl p-4 mb-3">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0"><i data-lucide="trophy" class="w-5 h-5"></i></div>
-            <div class="font-bold text-zinc-100 truncate">${escapeHtml(ex)}</div>
-          </div>
-          <button data-action="open-chart" data-exercise="${escapeHtml(ex)}" class="tap w-11 h-11 rounded-full bg-zinc-800 text-emerald-400 flex items-center justify-center shrink-0 active:bg-zinc-700"><i data-lucide="trending-up" class="w-5 h-5"></i></button>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-zinc-950/60 rounded-2xl p-3">
-            <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1">МАКС. ВЕС</div>
-            <div class="text-xl font-extrabold text-white">${b.maxWeight.weight}<span class="text-sm text-zinc-500 font-semibold">кг</span></div>
-            <div class="text-xs text-zinc-500">${b.maxWeight.reps} повт. · ${fmtDateLabel(b.maxWeight.date)}</div>
-          </div>
-          <div class="bg-zinc-950/60 rounded-2xl p-3">
-            <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1">~1ПМ</div>
-            <div class="text-xl font-extrabold text-violet-300">${b.maxEpleyVal.toFixed(1)}<span class="text-sm text-zinc-500 font-semibold">кг</span></div>
-            <div class="text-xs text-zinc-500">${b.maxEpley.weight}кг × ${b.maxEpley.reps} · ${fmtDateLabel(b.maxEpley.date)}</div>
-          </div>
-        </div>
-      </div>`;
-    }).join("");
-    content.innerHTML = `<div class="pt-4">${cards}</div>`;
+  function getChartPoints(exercise, side){
+    const sets = allSets().filter(s => s.exercise === exercise && (s.side || null) === (side || null))
+      .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    const byDate = {};
+    sets.forEach(s => { const e1 = epley(s.weight, s.reps); if (!byDate[s.date] || e1 > byDate[s.date]) byDate[s.date] = e1; });
+    return Object.entries(byDate).sort((a,b) => a[0].localeCompare(b[0])).map(([date,val]) => ({ date, val }));
   }
 
-  function buildProgressChartSvg(exercise){
-    const sets = allSets().filter(s => s.exercise === exercise).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
-    const byDate = {};
-    sets.forEach(s => {
-      const e1 = epley(s.weight, s.reps);
-      if (!byDate[s.date] || e1 > byDate[s.date]) byDate[s.date] = e1;
-    });
-    const points = Object.entries(byDate).sort((a,b) => a[0].localeCompare(b[0])).map(([date,val]) => ({ date, val }));
-    if (!points.length) return `<div class="text-center text-zinc-600 text-sm py-10">Недостаточно данных</div>`;
-
-    const W = 320, H = 160, padX = 14, padY = 16;
+  function chartSvgMarkup(points, W, H, interactive, idSuffix){
+    if (!points.length) return `<div class="text-center text-zinc-600 text-sm py-8">${T.notEnoughData}</div>`;
+    const padX = 14, padY = 16;
     const vals = points.map(p => p.val);
     const min = Math.min(...vals), max = Math.max(...vals);
     const range = (max - min) || 1;
     const stepX = points.length > 1 ? (W - padX*2) / (points.length - 1) : 0;
-    const coords = points.map((p,i) => ({
-      x: padX + i*stepX,
-      y: H - padY - ((p.val - min) / range) * (H - padY*2),
-      ...p
-    }));
+    const coords = points.map((p,i) => ({ x: padX + i*stepX, y: H - padY - ((p.val - min) / range) * (H - padY*2), ...p }));
     const pathD = coords.map((c,i) => (i===0?"M":"L") + c.x.toFixed(1) + "," + c.y.toFixed(1)).join(" ");
     const areaD = pathD + ` L${coords[coords.length-1].x.toFixed(1)},${H-padY} L${coords[0].x.toFixed(1)},${H-padY} Z`;
-    const dots = coords.map(c => `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#34d399" stroke="#09090b" stroke-width="1.5"><title>${fmtDateLabel(c.date)}: ${c.val.toFixed(1)}кг</title></circle>`).join("");
-    const gradId = "chartGrad_" + Math.random().toString(36).slice(2,8);
-
-    return `
-    <svg viewBox="0 0 ${W} ${H}" class="w-full h-40">
-      <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#34d399" stop-opacity="0.35"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
-      </linearGradient></defs>
+    const dots = coords.map(c => `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${interactive?4:3.5}" fill="#34d399" stroke="#09090b" stroke-width="1.5" />`).join("");
+    const gradId = "chartGrad_" + idSuffix;
+    const cursorGroup = interactive ? `<g id="chartCursor_${idSuffix}" style="opacity:0">
+        <line x1="0" y1="${padY}" x2="0" y2="${H-padY}" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="3,3" class="chart-cursor-line"/>
+        <circle r="6" fill="#a78bfa" stroke="#09090b" stroke-width="2" />
+      </g>` : "";
+    const dataAttr = interactive ? `data-points='${JSON.stringify(coords.map(c => ({x:c.x,y:c.y,date:c.date,val:c.val})))}'` : "";
+    return `<svg id="chartSvg_${idSuffix}" ${dataAttr} viewBox="0 0 ${W} ${H}" class="w-full ${interactive?'h-56 touch-none':'h-28'}">
+      <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399" stop-opacity="0.35"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></linearGradient></defs>
       <path d="${areaD}" fill="url(#${gradId})" />
       <path d="${pathD}" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
       ${dots}
-    </svg>
-    <div class="flex justify-between text-[10px] text-zinc-600 mt-1 px-1"><span>${fmtDateLabel(points[0].date)}</span><span>${fmtDateLabel(points[points.length-1].date)}</span></div>`;
+      ${cursorGroup}
+    </svg>`;
   }
 
-  function openChart(ex){ sound("tap"); ui.chartExercise = ex; renderChartModal(); }
+  function wireChartInteraction(idSuffix, labelElId){
+    const svg = document.getElementById("chartSvg_" + idSuffix);
+    if (!svg) return;
+    const points = JSON.parse(svg.dataset.points || "[]");
+    if (!points.length) return;
+    const cursorGroup = document.getElementById("chartCursor_" + idSuffix);
+    const line = cursorGroup.querySelector("line");
+    const dot = cursorGroup.querySelector("circle");
+    const label = document.getElementById(labelElId);
+    const W = svg.viewBox.baseVal.width;
+
+    function updateAt(clientX){
+      const rect = svg.getBoundingClientRect();
+      const svgX = ((clientX - rect.left) / rect.width) * W;
+      let nearest = points[0], minDist = Infinity;
+      points.forEach(p => { const d = Math.abs(p.x - svgX); if (d < minDist){ minDist = d; nearest = p; } });
+      line.setAttribute("x1", nearest.x); line.setAttribute("x2", nearest.x);
+      dot.setAttribute("cx", nearest.x); dot.setAttribute("cy", nearest.y);
+      cursorGroup.style.opacity = "1";
+      if (label) label.textContent = fmtDateLabel(nearest.date) + " · " + nearest.val.toFixed(1) + "кг";
+    }
+
+    svg.addEventListener("pointerdown", (e) => { svg.setPointerCapture(e.pointerId); updateAt(e.clientX); });
+    svg.addEventListener("pointermove", (e) => { updateAt(e.clientX); });
+    const last = points[points.length - 1];
+    line.setAttribute("x1", last.x); line.setAttribute("x2", last.x);
+    dot.setAttribute("cx", last.x); dot.setAttribute("cy", last.y);
+    cursorGroup.style.opacity = "1";
+    if (label) label.textContent = fmtDateLabel(last.date) + " · " + last.val.toFixed(1) + "кг";
+  }
+
+  function renderRecords(){
+    const names = allLoggedExerciseNames();
+    const content = document.getElementById("content");
+    if (!names.length){
+      content.innerHTML = `<div class="text-center py-20 text-zinc-600"><i data-lucide="trophy" class="w-10 h-10 mx-auto mb-3 opacity-40"></i><div class="text-sm">${T.noRecords}</div></div>`;
+      return;
+    }
+    let html = "";
+    names.forEach(ex => {
+      const sides = exerciseSides(ex);
+      const order = [null, "left", "right"].filter(s => sides.includes(s)).filter(s => bestFor(ex, s));
+      if (!order.length) return;
+      const split = order.length > 1;
+
+      const blocks = order.map(side => {
+        const b = bestFor(ex, side);
+        const label = side === "left" ? T.leftLabel : side === "right" ? T.rightLabel : null;
+        const points = getChartPoints(ex, side);
+        const idSuffix = "r" + Math.random().toString(36).slice(2,9);
+        return `
+        <div>
+          ${label ? `<div class="text-xs font-bold text-sky-400 mb-2">${label}</div>` : ""}
+          <div class="grid grid-cols-2 gap-2.5 mb-2.5">
+            <div class="bg-zinc-950/60 rounded-2xl ${split?'p-2.5':'p-3'}">
+              <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1">${T.maxWeightLabel}</div>
+              <div class="${split?'text-lg':'text-xl'} font-extrabold text-white">${b.maxWeight.weight}<span class="text-sm text-zinc-500 font-semibold">кг</span></div>
+              <div class="text-xs text-zinc-500">${b.maxWeight.reps} ${T.repsShort} · ${fmtDateLabel(b.maxWeight.date)}</div>
+            </div>
+            <div class="bg-zinc-950/60 rounded-2xl ${split?'p-2.5':'p-3'}">
+              <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1">${T.estOneRm}</div>
+              <div class="${split?'text-lg':'text-xl'} font-extrabold text-violet-300">${b.maxEpleyVal.toFixed(1)}<span class="text-sm text-zinc-500 font-semibold">кг</span></div>
+              <div class="text-xs text-zinc-500">${b.maxEpley.weight}кг × ${b.maxEpley.reps} · ${fmtDateLabel(b.maxEpley.date)}</div>
+            </div>
+          </div>
+          <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1.5 px-1">${T.progressTitle}</div>
+          <button data-action="open-chart" data-exercise="${escapeHtml(ex)}" data-side="${side||''}" class="tap w-full bg-zinc-950/40 rounded-2xl p-2">
+            ${chartSvgMarkup(points, 320, split?90:110, false, idSuffix)}
+          </button>
+        </div>`;
+      }).join("");
+
+      html += `
+      <div class="anim-pop bg-gradient-to-br from-zinc-900 to-zinc-900/60 border border-violet-500/20 rounded-3xl p-4 mb-3">
+        <div class="flex items-center gap-2.5 mb-3">
+          <div class="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0"><i data-lucide="trophy" class="w-5 h-5"></i></div>
+          <div class="font-bold text-zinc-100 truncate">${escapeHtml(ex)}</div>
+        </div>
+        <div class="${split?'grid grid-cols-2 gap-3':''}">${blocks}</div>
+      </div>`;
+    });
+    content.innerHTML = `<div class="pt-4">${html}</div>`;
+  }
+
+  function openChart(ex, side){
+    sound("tap");
+    ui.chartExercise = ex; ui.chartSide = side || null;
+    renderChartModal();
+  }
   function closeChart(){ ui.chartExercise = null; document.getElementById("modalHost").innerHTML = ""; }
   function renderChartModal(){
     const host = document.getElementById("modalHost");
-    const ex = ui.chartExercise;
+    const ex = ui.chartExercise, side = ui.chartSide;
+    const points = getChartPoints(ex, side);
+    const suffix = side === "left" ? " · " + T.leftLabel : side === "right" ? " · " + T.rightLabel : "";
     host.innerHTML = `
     <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
       <div data-action="close-chart" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
       <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8">
-        <div class="flex items-center justify-between mb-4">
-          <div class="font-bold text-lg text-zinc-100">${escapeHtml(ex)}</div>
+        <div class="flex items-center justify-between mb-1">
+          <div class="font-bold text-lg text-zinc-100">${escapeHtml(ex)}${suffix}</div>
           <button data-action="close-chart" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
-        <div class="text-xs font-bold tracking-wider text-zinc-500 mb-2">ПРОГРЕСС ~1ПМ</div>
-        ${buildProgressChartSvg(ex)}
+        <div class="text-xs font-bold tracking-wider text-zinc-500 mb-1">${T.progressTitle}</div>
+        <div id="chartReadout" class="text-sm font-semibold text-violet-300 mb-2 h-5">&nbsp;</div>
+        ${chartSvgMarkup(points, 320, 220, true, "modal")}
       </div>
     </div>`;
     lucide.createIcons();
+    wireChartInteraction("modal", "chartReadout");
   }
 
   /* ---------------------------------------------------------------------
@@ -925,16 +1848,16 @@
     const photos = [...state.photos].sort((a,b) => b.date.localeCompare(a.date));
     const addBtn = `
       <button data-action="open-add-photo" class="tap w-full flex items-center justify-center gap-2.5 border-2 border-dashed border-zinc-800 rounded-3xl py-7 mb-4 text-zinc-400 font-bold text-[15px] active:bg-zinc-900/50">
-        <i data-lucide="image-plus" class="w-6 h-6"></i> Добавить фото-запись
+        <i data-lucide="image-plus" class="w-6 h-6"></i> ${T.addPhotoEntry}
       </button>`;
     if (!photos.length){
-      content.innerHTML = addBtn + `<div class="text-center text-zinc-600 text-sm py-10">Начните вести фото-дневник прогресса</div>`;
+      content.innerHTML = addBtn + `<div class="text-center text-zinc-600 text-sm py-10">${T.startPhotoJournal}</div>`;
       return;
     }
     const grid = photos.map(p => `
       <button data-action="open-lightbox" data-id="${p.id}" class="tap relative aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900">
         <img src="${p.image}" class="w-full h-full object-cover" />
-        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6 text-left">
+        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6 text-start">
           <div class="text-white font-bold text-sm">${p.weightKg}кг</div>
           <div class="text-zinc-300 text-[11px]">${fmtDateLabel(p.date)}</div>
         </div>
@@ -959,24 +1882,24 @@
       <div data-action="close-add-photo" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
       <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <div class="font-bold text-lg text-zinc-100">Новая запись</div>
+          <div class="font-bold text-lg text-zinc-100">${T.newEntryTitle}</div>
           <button data-action="close-add-photo" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
         <label class="block cursor-pointer">
           <div class="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-zinc-800 flex items-center justify-center overflow-hidden bg-zinc-900 relative">
-            ${ui.photos.draftImage ? `<img src="${ui.photos.draftImage}" class="w-full h-full object-cover" />` : `<div class="text-center text-zinc-600"><i data-lucide="image-plus" class="w-9 h-9 mx-auto mb-2"></i><div class="text-sm font-semibold">Выбрать фото</div></div>`}
+            ${ui.photos.draftImage ? `<img src="${ui.photos.draftImage}" class="w-full h-full object-cover" />` : `<div class="text-center text-zinc-600"><i data-lucide="image-plus" class="w-9 h-9 mx-auto mb-2"></i><div class="text-sm font-semibold">${T.choosePhoto}</div></div>`}
           </div>
           <input id="photoFileInput" data-field="photo-file" type="file" accept="image/*" class="hidden" />
         </label>
         <div>
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">ВЕС (КГ)</div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">${T.weightKgLabel}</div>
           <input id="photoWeightInput" data-field="photo-weight" type="number" inputmode="decimal" step="0.1" value="${ui.photos.weightDraft}" placeholder="0" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-xl font-bold text-white outline-none focus:border-emerald-500/50" />
         </div>
         <div>
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">ДАТА</div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">${T.dateLabel}</div>
           <input id="photoDateInput" data-field="photo-date" type="date" value="${ui.photos.dateDraft}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-lg text-white outline-none focus:border-emerald-500/50" />
         </div>
-        <button data-action="save-photo" class="tap w-full py-5 rounded-[24px] bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-xl font-extrabold">Сохранить</button>
+        <button data-action="save-photo" class="tap w-full py-5 rounded-[24px] bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-xl font-extrabold">${T.saveBtn}</button>
       </div>
     </div>`;
     lucide.createIcons();
@@ -1014,8 +1937,8 @@
   function savePhoto(){
     const weight = parseFloat(document.getElementById("photoWeightInput").value) || 0;
     const date = document.getElementById("photoDateInput").value || todayStr();
-    if (!ui.photos.draftImage){ showToast("Выберите фото", "warn"); return; }
-    if (weight <= 0){ showToast("Введите вес", "warn"); return; }
+    if (!ui.photos.draftImage){ showToast(T.chooseFirst, "warn"); return; }
+    if (weight <= 0){ showToast(T.enterWeight, "warn"); return; }
     state.photos.push({ id: uid(), date, weightKg: weight, image: ui.photos.draftImage });
     saveState(); sound("log");
     closeAddPhoto(); renderPhotos(); lucide.createIcons();
@@ -1029,7 +1952,7 @@
     const host = document.getElementById("modalHost");
     host.innerHTML = `
     <div class="fixed inset-0 z-40 bg-black/95 flex flex-col">
-      <div class="flex items-center justify-between px-4 pb-4 safe-top">
+      <div class="flex items-center justify-between p-4 safe-top">
         <div><div class="text-white font-bold">${p.weightKg}кг</div><div class="text-zinc-400 text-xs">${fmtDateLabel(p.date)}</div></div>
         <div class="flex items-center gap-2">
           <button data-action="delete-photo" data-id="${p.id}" class="tap w-11 h-11 rounded-full bg-zinc-900 text-red-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
@@ -1041,7 +1964,7 @@
     lucide.createIcons();
   }
   function deletePhoto(id){
-    if (!confirm("Удалить эту запись?")) return;
+    if (!confirm(T.deleteEntryConfirm)) return;
     state.photos = state.photos.filter(p => p.id !== id);
     saveState(); sound("delete");
     closeLightbox(); renderPhotos(); lucide.createIcons();
@@ -1053,30 +1976,72 @@
   function openSettings(){ sound("tap"); ui.settingsOpen = true; renderSettingsModal(); }
   function closeSettings(){ ui.settingsOpen = false; document.getElementById("modalHost").innerHTML = ""; }
 
+  function renderAccountSectionHtml(){
+    if (!sb) return "";
+    if (supaUser){
+      const statusText = syncStatus === "syncing" ? T.syncingLabel : syncStatus === "error" ? T.syncErrorLabel : "";
+      return `
+      <div>
+        <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.accountLabel}</div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
+          <div class="flex items-center gap-2.5 mb-3">
+            <div class="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><i data-lucide="check-circle" class="w-4 h-4"></i></div>
+            <div class="min-w-0">
+              <div class="text-xs text-zinc-500">${T.syncedAs}${statusText ? " · " + statusText : ""}</div>
+              <div class="font-semibold text-zinc-200 truncate">${escapeHtml(supaUser.email)}</div>
+            </div>
+          </div>
+          <button data-action="sign-out-cloud" class="tap w-full py-3 rounded-xl bg-zinc-800 text-red-400 font-bold text-sm active:bg-zinc-700">${T.signOutBtn}</button>
+        </div>
+      </div>`;
+    }
+    const isSignup = ui.auth.mode === "signup";
+    return `
+    <div>
+      <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.accountLabel}</div>
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 space-y-3">
+        <div class="text-xs text-zinc-500">${T.syncHint}</div>
+        <input id="authEmail" data-field="auth-email" type="email" autocomplete="email" placeholder="${T.emailPlaceholder}" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+        <input id="authPassword" data-field="auth-password" type="password" autocomplete="${isSignup?"new-password":"current-password"}" placeholder="${T.passwordPlaceholder}" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+        ${ui.auth.error ? `<div class="text-xs text-red-400">${escapeHtml(ui.auth.error)}</div>` : ""}
+        <button data-action="submit-auth" ${ui.auth.busy?"disabled":""} class="tap w-full py-3.5 rounded-xl bg-emerald-500 active:bg-emerald-400 text-zinc-950 font-extrabold text-[15px] ${ui.auth.busy?"opacity-60":""}">${isSignup ? T.signUpBtn : T.signInBtn}</button>
+        <button data-action="toggle-auth-mode" class="tap w-full text-center text-xs font-semibold text-zinc-500 active:text-zinc-300 py-1">${isSignup ? T.switchToSignIn : T.switchToSignUp}</button>
+      </div>
+    </div>`;
+  }
+
   function renderSettingsModal(){
     const host = document.getElementById("modalHost");
     const mm = Math.floor(state.timerSettings.defaultSeconds / 60);
     const ss = state.timerSettings.defaultSeconds % 60;
+    const langOptions = LANGS.map(l => `<option value="${l}" ${l===lang?"selected":""}>${LANG_NAMES[l]}</option>`).join("");
     host.innerHTML = `
     <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
       <div data-action="close-settings" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-5">
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-5 max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <div class="font-bold text-lg text-zinc-100">Настройки</div>
+          <div class="font-bold text-lg text-zinc-100">${T.settingsTitle}</div>
           <button data-action="close-settings" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
+        ${renderAccountSectionHtml()}
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.languageLabel}</div>
+          <select id="languageSelect" data-field="language" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-[15px] text-white outline-none focus:border-emerald-500/50">
+            ${langOptions}
+          </select>
+        </div>
         <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
-          <div class="flex items-center gap-2.5 font-semibold text-zinc-200"><i data-lucide="volume-2" class="w-5 h-5 text-zinc-400"></i> Звуки нажатий</div>
+          <div class="flex items-center gap-2.5 font-semibold text-zinc-200"><i data-lucide="volume-2" class="w-5 h-5 text-zinc-400"></i> ${T.soundLabel}</div>
           ${toggleSwitchHtml(ui.soundEnabled, "toggle-app-sound")}
         </div>
         <div>
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">ТАЙМЕР ОТДЫХА</div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.timerSection}</div>
           <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-2.5">
-            <div class="font-semibold text-zinc-200">Спрашивать длительность</div>
+            <div class="font-semibold text-zinc-200">${T.askDurationLabel}</div>
             ${toggleSwitchHtml(!state.timerSettings.skipPrompt, "toggle-timer-prompt")}
           </div>
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
-            <div class="text-xs text-zinc-500 mb-2.5">Длительность по умолчанию</div>
+            <div class="text-xs text-zinc-500 mb-2.5">${T.defaultDurationLabel}</div>
             <div class="flex items-center justify-between">
               <button data-action="settings-timer-delta" data-delta="-15" class="tap w-12 h-12 rounded-xl bg-zinc-800 text-xl font-bold flex items-center justify-center active:bg-zinc-700">−</button>
               <div class="text-2xl font-extrabold text-white tabular-nums">${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}</div>
@@ -1120,22 +2085,22 @@
       <div class="anim-sheet relative w-full sm:max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8">
         <div class="text-center mb-1">
           <div class="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4 sm:hidden"></div>
-          <div class="font-bold text-lg text-zinc-100">Отдых между подходами</div>
+          <div class="font-bold text-lg text-zinc-100">${T.restBetweenSets}</div>
         </div>
         <div class="relative h-44 flex justify-center items-center gap-3 mt-3">
           <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-11 bg-zinc-800/60 rounded-2xl pointer-events-none"></div>
           <div id="pickerMin" class="picker-col w-16 text-center"><div style="height:66px"></div>${minCol}<div style="height:66px"></div></div>
-          <div class="text-zinc-500 font-bold text-lg">мин</div>
+          <div class="text-zinc-500 font-bold text-lg">${T.minShort}</div>
           <div id="pickerSec" class="picker-col w-16 text-center"><div style="height:66px"></div>${secCol}<div style="height:66px"></div></div>
-          <div class="text-zinc-500 font-bold text-lg">сек</div>
+          <div class="text-zinc-500 font-bold text-lg">${T.secShort}</div>
         </div>
         <label class="flex items-center gap-3 mt-4 mb-5 px-1 py-1 cursor-pointer">
           <input id="pickerSkipCheckbox" type="checkbox" data-field="picker-skip" class="w-6 h-6 rounded-md accent-emerald-500" />
-          <span class="text-[15px] text-zinc-400 font-medium">Больше не спрашивать</span>
+          <span class="text-[15px] text-zinc-400 font-medium">${T.dontAskAgain}</span>
         </label>
         <div class="flex gap-2.5">
-          <button data-action="skip-timer" class="tap flex-1 py-4 rounded-2xl bg-zinc-800 text-zinc-300 font-bold text-[15px] active:bg-zinc-700">Без отдыха</button>
-          <button data-action="start-timer" class="tap flex-1 py-4 rounded-2xl bg-emerald-500 text-zinc-950 font-extrabold text-[15px] active:bg-emerald-400">Начать</button>
+          <button data-action="skip-timer" class="tap flex-1 py-4 rounded-2xl bg-zinc-800 text-zinc-300 font-bold text-[15px] active:bg-zinc-700">${T.noRestBtn}</button>
+          <button data-action="start-timer" class="tap flex-1 py-4 rounded-2xl bg-emerald-500 text-zinc-950 font-extrabold text-[15px] active:bg-emerald-400">${T.startBtn}</button>
         </div>
       </div>
     </div>`;
@@ -1181,6 +2146,12 @@
   --------------------------------------------------------------------- */
   function clearRestTimerInterval(){ if (timerIntervalId){ clearInterval(timerIntervalId); timerIntervalId = null; } }
 
+  function manualStartTimer(){
+    sound("tap");
+    if (state.timerSettings.skipPrompt) startRestTimer(state.timerSettings.defaultSeconds);
+    else openTimerPicker();
+  }
+
   function startRestTimer(seconds){
     clearRestTimerInterval();
     const endsAt = Date.now() + seconds*1000;
@@ -1188,6 +2159,7 @@
     localStorage.setItem(TIMER_KEY, JSON.stringify({ endsAt, total: seconds }));
     timerIntervalId = setInterval(tickTimer, 250);
     renderTimer();
+    renderFab();
   }
 
   function tickTimer(){
@@ -1205,7 +2177,9 @@
     sound("timerDone");
     vibrate([30,60,30,60,30]);
     renderTimer();
-    showToast("Отдых окончен 💪", "pr");
+    renderFab();
+    lucide.createIcons();
+    showToast(T.restOverToast, "pr");
   }
 
   function expandTimer(){ ui.timer.expanded = true; renderTimer(); }
@@ -1225,6 +2199,8 @@
     localStorage.removeItem(TIMER_KEY);
     sound("tap");
     renderTimer();
+    renderFab();
+    lucide.createIcons();
   }
 
   function renderTimer(){
@@ -1236,7 +2212,7 @@
       <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
         <div data-action="collapse-timer" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
         <div class="anim-sheet relative w-full sm:max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-10 flex flex-col items-center">
-          <div class="text-sm font-bold text-zinc-500 mb-4 tracking-wider">ОТДЫХ</div>
+          <div class="text-sm font-bold text-zinc-500 mb-4 tracking-wider">${T.restLabel}</div>
           <div class="relative w-48 h-48 mb-6">
             <svg viewBox="0 0 60 60" class="w-full h-full -rotate-90">
               <circle cx="30" cy="30" r="${r}" fill="none" stroke="#27272a" stroke-width="4" />
@@ -1245,16 +2221,17 @@
             <div class="absolute inset-0 flex items-center justify-center"><span id="timerTimeText" class="text-4xl font-extrabold text-white tabular-nums">00:00</span></div>
           </div>
           <div class="flex items-center gap-3 mb-2">
-            <button data-action="adjust-timer" data-delta="-15" class="tap px-5 py-3 rounded-2xl bg-zinc-800 text-zinc-200 font-bold text-[15px] active:bg-zinc-700">−15с</button>
-            <button data-action="skip-active-timer" class="tap px-6 py-3 rounded-2xl bg-zinc-800 text-red-400 font-bold text-[15px] active:bg-zinc-700">Пропустить</button>
-            <button data-action="adjust-timer" data-delta="15" class="tap px-5 py-3 rounded-2xl bg-zinc-800 text-zinc-200 font-bold text-[15px] active:bg-zinc-700">+15с</button>
+            <button data-action="adjust-timer" data-delta="-15" class="tap px-5 py-3 rounded-2xl bg-zinc-800 text-zinc-200 font-bold text-[15px] active:bg-zinc-700">−15${T.secShort}</button>
+            <button data-action="skip-active-timer" class="tap px-6 py-3 rounded-2xl bg-zinc-800 text-red-400 font-bold text-[15px] active:bg-zinc-700">${T.skipBtn}</button>
+            <button data-action="adjust-timer" data-delta="15" class="tap px-5 py-3 rounded-2xl bg-zinc-800 text-zinc-200 font-bold text-[15px] active:bg-zinc-700">+15${T.secShort}</button>
           </div>
-          <button data-action="collapse-timer" class="tap text-sm text-zinc-600 mt-3 py-2 px-4 active:text-zinc-400">Свернуть</button>
+          <button data-action="collapse-timer" class="tap text-sm text-zinc-600 mt-3 py-2 px-4 active:text-zinc-400">${T.collapseBtn}</button>
         </div>
       </div>`;
     } else {
+      const offset = navHeight() + 12;
       host.innerHTML = `
-      <div data-action="expand-timer" class="tap fixed left-1/2 -translate-x-1/2 bottom-24 z-30 flex items-center gap-3 bg-zinc-900/95 backdrop-blur border border-zinc-800 rounded-full pl-2.5 pr-2.5 py-2.5 shadow-2xl cursor-pointer">
+      <div data-action="expand-timer" style="bottom:${offset}px" class="tap fixed left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-zinc-900/95 backdrop-blur border border-zinc-800 rounded-full ps-2.5 pe-2.5 py-2.5 shadow-2xl cursor-pointer">
         <div class="relative w-10 h-10 shrink-0">
           <svg viewBox="0 0 60 60" class="w-full h-full -rotate-90">
             <circle cx="30" cy="30" r="${r}" fill="none" stroke="#27272a" stroke-width="6" />
@@ -1296,14 +2273,26 @@
       case "nav-back": navBack(); break;
       case "step-weight": stepWeight(parseFloat(a.delta)); break;
       case "step-reps": stepReps(parseInt(a.delta)); break;
+      case "step-weight-side": stepWeightSide(a.side, parseFloat(a.delta)); break;
+      case "step-reps-side": stepRepsSide(a.side, parseInt(a.delta)); break;
       case "toggle-rpe": ui.workout.rpeOpen = !ui.workout.rpeOpen; sound("tap"); render(); break;
+      case "toggle-split-sides": toggleSplitSides(); break;
       case "log-set": logSet(); break;
       case "delete-set": deleteSet(a.session, a.set); break;
+      case "toggle-quick-add": toggleQuickAdd(); break;
+      case "quick-add-exercise": quickAddExercise(); break;
       case "open-day": openDay(a.day); break;
       case "toggle-day-active": toggleDayActive(a.day); break;
       case "add-day-exercise": addDayExercise(a.day); break;
       case "remove-day-exercise": removeDayExercise(a.day, parseInt(a.index)); break;
-      case "open-chart": openChart(a.exercise); break;
+      case "save-template": saveTemplate(); break;
+      case "close-template-modal": closeTemplateModal(); break;
+      case "confirm-save-template": confirmSaveTemplate(); break;
+      case "open-templates": openTemplates(); break;
+      case "close-templates-modal": closeTemplatesModal(); break;
+      case "apply-template": applyTemplate(a.id); break;
+      case "delete-template": deleteTemplate(a.id); break;
+      case "open-chart": openChart(a.exercise, a.side); break;
       case "close-chart": closeChart(); break;
       case "open-add-photo": openAddPhoto(); break;
       case "close-add-photo": closeAddPhoto(); break;
@@ -1322,8 +2311,18 @@
       case "collapse-timer": collapseTimer(); break;
       case "adjust-timer": adjustTimer(parseInt(a.delta)); break;
       case "skip-active-timer": skipActiveTimer(); break;
+      case "manual-timer": manualStartTimer(); break;
       case "goto-today-schedule": gotoTodaySchedule(); break;
       case "pick-exercise-image": pickExerciseImage(a.exercise); break;
+      case "edit-note": editNote(); break;
+      case "close-note-modal": closeNoteModal(); break;
+      case "save-note": saveNoteFromModal(); break;
+      case "delete-note": deleteNote(); break;
+      case "open-image-lightbox": openImageLightbox(a.exercise); break;
+      case "close-image-lightbox": closeImageLightbox(); break;
+      case "submit-auth": submitAuth(); break;
+      case "toggle-auth-mode": toggleAuthMode(); break;
+      case "sign-out-cloud": signOutCloud(); break;
     }
   });
 
@@ -1338,10 +2337,14 @@
     const field = e.target.dataset.field;
     if (field === "weight") ui.weight = parseFloat(e.target.value) || 0;
     else if (field === "reps") ui.reps = parseInt(e.target.value) || 0;
+    else if (field === "weightL") ui.weightL = parseFloat(e.target.value) || 0;
+    else if (field === "weightR") ui.weightR = parseFloat(e.target.value) || 0;
+    else if (field === "repsL") ui.repsL = parseInt(e.target.value) || 0;
+    else if (field === "repsR") ui.repsR = parseInt(e.target.value) || 0;
     else if (field === "rpe"){
       ui.rpe = parseFloat(e.target.value);
       const label = document.getElementById("rpeValueLabel"); if (label) label.textContent = ui.rpe;
-      const hint = document.getElementById("rpeHint"); if (hint) hint.textContent = rpeHint(ui.rpe);
+      const hint = document.getElementById("rpeHint"); if (hint) hint.textContent = rpeHintText(ui.rpe);
     }
     else if (field === "photo-weight") ui.photos.weightDraft = e.target.value;
     else if (field === "photo-date") ui.photos.dateDraft = e.target.value;
@@ -1354,7 +2357,7 @@
       compressImage(file, 900, 0.72).then(dataUrl => {
         ui.photos.draftImage = dataUrl;
         if (ui.photos.adding) renderAddPhotoModal();
-      }).catch(() => showToast("Не удалось загрузить фото", "warn"));
+      }).catch(() => showToast(T.photoLoadFailed, "warn"));
     } else if (e.target.id === "exerciseImageInput"){
       const file = e.target.files[0];
       e.target.value = "";
@@ -1363,21 +2366,28 @@
         state.exerciseImages[ui.pendingImageExercise] = dataUrl;
         saveState(); sound("log");
         render();
-      }).catch(() => showToast("Не удалось загрузить фото", "warn"));
+      }).catch(() => showToast(T.photoLoadFailed, "warn"));
+    } else if (e.target.id === "languageSelect"){
+      setLanguage(e.target.value);
+      if (ui.settingsOpen) renderSettingsModal();
     }
   });
 
   app.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     const field = e.target.dataset.field;
-    if (field === "weight" || field === "reps"){ e.preventDefault(); logSet(); }
+    if (field === "weight" || field === "reps" || field === "weightL" || field === "weightR" || field === "repsL" || field === "repsR"){ e.preventDefault(); logSet(); }
     else if (field === "new-day-exercise"){ e.preventDefault(); addDayExercise(ui.schedule.activeDay); }
+    else if (field === "quick-add-exercise"){ e.preventDefault(); quickAddExercise(); }
+    else if (field === "template-name"){ e.preventDefault(); confirmSaveTemplate(); }
+    else if (field === "auth-email" || field === "auth-password"){ e.preventDefault(); submitAuth(); }
   });
 
   /* ---------------------------------------------------------------------
      Init
   --------------------------------------------------------------------- */
   function init(){
+    applyLangDom();
     const savedTimer = localStorage.getItem(TIMER_KEY);
     if (savedTimer){
       try {
@@ -1392,6 +2402,7 @@
     }
     render();
     renderTimer();
+    initAuth();
   }
 
   init();
