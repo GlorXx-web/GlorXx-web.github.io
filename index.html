@@ -25,6 +25,10 @@
     font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-tap-highlight-color: transparent;
     letter-spacing: -0.01em;
+    background-color: #09090b;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%2334d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.055'%3E%3Cg transform='translate(15,20) rotate(-18)'%3E%3Crect x='0' y='8' width='34' height='8' rx='2'/%3E%3Crect x='-8' y='2' width='8' height='20' rx='2'/%3E%3Crect x='34' y='2' width='8' height='20' rx='2'/%3E%3C/g%3E%3Cg transform='translate(150,35)'%3E%3Ccircle cx='0' cy='0' r='14'/%3E%3Cpath d='M-14 0h28M0-14v28M-10-10l20 20M10-10l-20 20'/%3E%3C/g%3E%3Cg transform='translate(60,95) rotate(12)'%3E%3Cpath d='M2 20 Q0 0 18 -14 Q26 -20 30 -12 Q22 -8 20 4 Q18 18 2 20Z'/%3E%3Cpath d='M8 14l14-22'/%3E%3C/g%3E%3Cg transform='translate(175,130) rotate(-10)'%3E%3Ccircle cx='0' cy='0' r='13'/%3E%3Cpath d='M-13 0h26M-9-9l18 18M-9 9l18-18'/%3E%3C/g%3E%3Cg transform='translate(25,160) rotate(20)'%3E%3Cpath d='M0 10c0-8 6-14 14-14s14 6 14 14-6 10-14 10-14-2-14-10Z'/%3E%3Cpath d='M2 4l-8-8M26 4l8-8'/%3E%3C/g%3E%3Cg transform='translate(110,190)'%3E%3Cpath d='M-12-6h24l4 6-4 6h-24l-4-6z'/%3E%3Ccircle cx='-16' cy='0' r='3'/%3E%3Ccircle cx='16' cy='0' r='3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-size: 220px 220px;
+    background-attachment: fixed;
   }
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
@@ -83,6 +87,19 @@
   .anim-lightbox { animation: lightbox-in 0.25s cubic-bezier(.22,1,.36,1); }
 
   .chart-cursor-line { pointer-events: none; }
+
+  @keyframes slide-in-right { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes slide-in-left { from { transform: translateX(-28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .slide-right { animation: slide-in-right 0.32s cubic-bezier(.22,1,.36,1); }
+  .slide-left { animation: slide-in-left 0.32s cubic-bezier(.22,1,.36,1); }
+  [dir="rtl"] .slide-right { animation-name: slide-in-left; }
+  [dir="rtl"] .slide-left { animation-name: slide-in-right; }
+
+  @keyframes gate-fade { from { opacity: 0; } to { opacity: 1; } }
+  .gate-banner-img { animation: gate-fade 0.9s ease; }
+
+  @keyframes gate-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .anim-gate { animation: gate-in 0.4s cubic-bezier(.22,1,.36,1); }
 </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 h-screen flex flex-col overflow-hidden">
@@ -111,6 +128,10 @@
   <div id="timerHost"></div>
   <div id="modalHost"></div>
   <div id="toastHost" class="safe-toast-top pointer-events-none fixed left-1/2 z-50"></div>
+
+  <div id="gateHost" class="fixed inset-0 z-[60] bg-zinc-950 flex items-center justify-center">
+    <div class="w-8 h-8 border-2 border-zinc-700 border-t-emerald-400 rounded-full animate-spin"></div>
+  </div>
 </div>
 
 <script>
@@ -160,7 +181,7 @@
     ru: {
       navWorkout:"Тренировка", navSchedule:"Расписание", navRecords:"Рекорды", navPhotos:"Фото",
       titleWorkout:"Моя тренировка", titleSchedule:"Расписание", titleRecords:"Рекорды", titlePhotos:"Фото-прогресс",
-      restTitle:"Сегодня тренировки нет", restSubtitle:"Отдыхай! 💤",
+      restTitle:"Сегодня тренировки нет", restSubtitle:"Отдыхай и восстанавливайся",
       noExercisesToday:"На сегодня ещё нет упражнений", configureSchedule:"Настроить расписание",
       exerciseNamePlaceholder:"Название упражнения", addExerciseBtn:"Добавить упражнение в сегодня",
       bestLabel:"Лучший:", noDataYet:"Ещё нет данных",
@@ -176,6 +197,9 @@
       restDay:"День отдыха", workoutDay:"Тренировочный день",
       saveTemplate:"Сохранить как шаблон", applyTemplate:"Вставить шаблон", templateNamePrompt:"Название шаблона",
       templatesTitle:"Шаблоны дня", noTemplates:"Пока нет шаблонов", deleteTemplateConfirm:"Удалить этот шаблон?", confirmApplyTemplate:"Заменить текущие упражнения этим шаблоном?",
+      quickFillBtn:"Быстрое заполнение", legendPlanned:"Запланировано", legendDone:"Выполнено", confirmRemoveWorkoutDay:"Убрать тренировку в этот день? Упражнения будут удалены.",
+      quickFillWeekdaysLabel:"ДНИ НЕДЕЛИ", quickFillExercisesLabel:"УПРАЖНЕНИЯ", quickFillFromTemplate:"Выбрать из шаблона", quickFillMonthsLabel:"ЗАПОЛНИТЬ НА МЕСЯЦЕВ ВПЕРЁД",
+      quickFillApplyBtn:"Применить", quickFillNeedsBoth:"Выберите дни недели и добавьте упражнения", confirmQuickFillOverwrite:"В некоторых днях уже есть упражнения — заменить их?", quickFillApplied:"Расписание заполнено",
       newTemplateNamePlaceholder:"Например: День ног", templateSaved:"Шаблон сохранён", templateApplied:"Шаблон применён",
       maxWeightLabel:"МАКС. ВЕС", repsShort:"повт.", notEnoughData:"Недостаточно данных", progressTitle:"ПРОГРЕСС ~1ПМ",
       noRecords:"Логируйте подходы, чтобы увидеть рекорды",
@@ -186,18 +210,25 @@
       defaultDurationLabel:"Длительность по умолчанию", languageLabel:"ЯЗЫК",
       accountLabel:"АККАУНТ", emailPlaceholder:"Email", passwordPlaceholder:"Пароль", signInBtn:"Войти", signUpBtn:"Зарегистрироваться",
       signOutBtn:"Выйти", switchToSignUp:"Нет аккаунта? Зарегистрироваться", switchToSignIn:"Уже есть аккаунт? Войти",
-      syncedAs:"Синхронизировано:", authFillBoth:"Введите email и пароль", authCheckEmail:"Проверьте почту, чтобы подтвердить регистрацию",
+      syncedAs:"Синхронизировано:", authFillBoth:"Заполните обязательные поля", authCheckEmail:"Проверьте почту, чтобы подтвердить регистрацию",
+      authPasswordMismatch:"Пароли не совпадают", confirmSignOut:"Выйти из аккаунта?",
+      firstNamePlaceholder:"Имя", lastNamePlaceholder:"Фамилия", confirmPasswordPlaceholder:"Повторите пароль", birthDatePlaceholder:"Дата рождения",
+      gateTitle:"Добро пожаловать в Iron Log", gateSubtitle:"Создайте аккаунт, чтобы ваш прогресс никогда не терялся",
+      gateFeature1:"Отслеживание тренировок и рекордов", gateFeature2:"Синхронизация между устройствами",
+      gateFeature3:"Расписание, шаблоны и фото-прогресс", gateFeature4:"Данные останутся с вами навсегда",
       syncHint:"Войдите, чтобы данные сохранялись в облаке и не терялись", syncingLabel:"Синхронизация…", syncErrorLabel:"Ошибка синхронизации",
       restBetweenSets:"Отдых между подходами", minShort:"мин", secShort:"сек", dontAskAgain:"Больше не спрашивать",
       noRestBtn:"Без отдыха", startBtn:"Начать",
-      restLabel:"ОТДЫХ", skipBtn:"Пропустить", collapseBtn:"Свернуть", restOverToast:"Отдых окончен 💪",
+      restLabel:"ОТДЫХ", skipBtn:"Пропустить", collapseBtn:"Свернуть", restOverToast:"Отдых окончен",
       photoLoadFailed:"Не удалось загрузить фото", confirmDeleteSession:"Удалить этот день тренировки? Это нельзя отменить.",
-      today:"Сегодня", yesterday:"Вчера", volumeLabel:"объём"
+      today:"Сегодня", yesterday:"Вчера", volumeLabel:"объём",
+      termsTitle:"Условия использования", termsBody:"Приложение предоставляется «как есть». Ваши данные тренировок хранятся в вашем аккаунте и используются только для работы Iron Log.",
+      contactTitle:"Нашли баг или есть пожелание?", contactBody:"Напишите нам на"
     },
     en: {
       navWorkout:"Workout", navSchedule:"Schedule", navRecords:"Records", navPhotos:"Photos",
       titleWorkout:"My Workout", titleSchedule:"Schedule", titleRecords:"Records", titlePhotos:"Progress Photos",
-      restTitle:"No workout today", restSubtitle:"Rest up! 💤",
+      restTitle:"No workout today", restSubtitle:"Rest and recover",
       noExercisesToday:"No exercises added for today yet", configureSchedule:"Set up schedule",
       exerciseNamePlaceholder:"Exercise name", addExerciseBtn:"Add exercise to today",
       bestLabel:"Best:", noDataYet:"No data yet",
@@ -213,6 +244,9 @@
       restDay:"Rest day", workoutDay:"Workout day",
       saveTemplate:"Save as template", applyTemplate:"Apply template", templateNamePrompt:"Template name",
       templatesTitle:"Day templates", noTemplates:"No templates yet", deleteTemplateConfirm:"Delete this template?", confirmApplyTemplate:"Replace the current exercises with this template?",
+      quickFillBtn:"Quick fill", legendPlanned:"Planned", legendDone:"Done", confirmRemoveWorkoutDay:"Remove the workout on this day? Its exercises will be deleted.",
+      quickFillWeekdaysLabel:"WEEKDAYS", quickFillExercisesLabel:"EXERCISES", quickFillFromTemplate:"Pick from a template", quickFillMonthsLabel:"FILL FOR HOW MANY MONTHS AHEAD",
+      quickFillApplyBtn:"Apply", quickFillNeedsBoth:"Pick weekdays and add exercises", confirmQuickFillOverwrite:"Some days already have exercises — replace them?", quickFillApplied:"Schedule filled in",
       newTemplateNamePlaceholder:"E.g.: Leg Day", templateSaved:"Template saved", templateApplied:"Template applied",
       maxWeightLabel:"MAX WEIGHT", repsShort:"reps", notEnoughData:"Not enough data", progressTitle:"~1RM PROGRESS",
       noRecords:"Log sets to see your records",
@@ -223,18 +257,25 @@
       defaultDurationLabel:"Default duration", languageLabel:"LANGUAGE",
       accountLabel:"ACCOUNT", emailPlaceholder:"Email", passwordPlaceholder:"Password", signInBtn:"Sign in", signUpBtn:"Sign up",
       signOutBtn:"Sign out", switchToSignUp:"No account? Sign up", switchToSignIn:"Already have an account? Sign in",
-      syncedAs:"Synced as:", authFillBoth:"Enter email and password", authCheckEmail:"Check your email to confirm sign-up",
+      syncedAs:"Synced as:", authFillBoth:"Fill in the required fields", authCheckEmail:"Check your email to confirm sign-up",
+      authPasswordMismatch:"Passwords don't match", confirmSignOut:"Sign out of your account?",
+      firstNamePlaceholder:"First name", lastNamePlaceholder:"Last name", confirmPasswordPlaceholder:"Confirm password", birthDatePlaceholder:"Date of birth",
+      gateTitle:"Welcome to Iron Log", gateSubtitle:"Create an account so your progress is never lost",
+      gateFeature1:"Track workouts and personal records", gateFeature2:"Sync across all your devices",
+      gateFeature3:"Schedules, templates and progress photos", gateFeature4:"Your data stays with you forever",
       syncHint:"Sign in so your data is saved to the cloud and never lost", syncingLabel:"Syncing…", syncErrorLabel:"Sync error",
       restBetweenSets:"Rest between sets", minShort:"min", secShort:"sec", dontAskAgain:"Don't ask again",
       noRestBtn:"No rest", startBtn:"Start",
-      restLabel:"REST", skipBtn:"Skip", collapseBtn:"Collapse", restOverToast:"Rest over 💪",
+      restLabel:"REST", skipBtn:"Skip", collapseBtn:"Collapse", restOverToast:"Rest over",
       photoLoadFailed:"Couldn't load photo", confirmDeleteSession:"Delete this whole workout day? This can't be undone.",
-      today:"Today", yesterday:"Yesterday", volumeLabel:"volume"
+      today:"Today", yesterday:"Yesterday", volumeLabel:"volume",
+      termsTitle:"Terms of use", termsBody:"The app is provided as is. Your workout data is stored in your account and used only to run Iron Log.",
+      contactTitle:"Found a bug or have a suggestion?", contactBody:"Email us at"
     },
     es: {
       navWorkout:"Entreno", navSchedule:"Horario", navRecords:"Récords", navPhotos:"Fotos",
       titleWorkout:"Mi entreno", titleSchedule:"Horario", titleRecords:"Récords", titlePhotos:"Fotos de progreso",
-      restTitle:"Hoy no hay entreno", restSubtitle:"¡A descansar! 💤",
+      restTitle:"Hoy no hay entreno", restSubtitle:"Descansa y recupérate",
       noExercisesToday:"Aún no hay ejercicios para hoy", configureSchedule:"Configurar horario",
       exerciseNamePlaceholder:"Nombre del ejercicio", addExerciseBtn:"Añadir ejercicio a hoy",
       bestLabel:"Mejor:", noDataYet:"Sin datos todavía",
@@ -250,6 +291,9 @@
       restDay:"Día de descanso", workoutDay:"Día de entreno",
       saveTemplate:"Guardar como plantilla", applyTemplate:"Aplicar plantilla", templateNamePrompt:"Nombre de la plantilla",
       templatesTitle:"Plantillas del día", noTemplates:"Sin plantillas todavía", deleteTemplateConfirm:"¿Eliminar esta plantilla?", confirmApplyTemplate:"¿Reemplazar los ejercicios actuales con esta plantilla?",
+      quickFillBtn:"Relleno rápido", legendPlanned:"Planificado", legendDone:"Hecho", confirmRemoveWorkoutDay:"¿Quitar el entreno de este día? Se eliminarán sus ejercicios.",
+      quickFillWeekdaysLabel:"DÍAS DE LA SEMANA", quickFillExercisesLabel:"EJERCICIOS", quickFillFromTemplate:"Elegir de una plantilla", quickFillMonthsLabel:"RELLENAR PARA CUÁNTOS MESES",
+      quickFillApplyBtn:"Aplicar", quickFillNeedsBoth:"Elige días de la semana y añade ejercicios", confirmQuickFillOverwrite:"Algunos días ya tienen ejercicios, ¿reemplazarlos?", quickFillApplied:"Horario completado",
       newTemplateNamePlaceholder:"Ej.: Día de piernas", templateSaved:"Plantilla guardada", templateApplied:"Plantilla aplicada",
       maxWeightLabel:"PESO MÁX.", repsShort:"reps.", notEnoughData:"Datos insuficientes", progressTitle:"PROGRESO ~1RM",
       noRecords:"Registra series para ver tus récords",
@@ -260,18 +304,25 @@
       defaultDurationLabel:"Duración predeterminada", languageLabel:"IDIOMA",
       accountLabel:"CUENTA", emailPlaceholder:"Email", passwordPlaceholder:"Contraseña", signInBtn:"Iniciar sesión", signUpBtn:"Registrarse",
       signOutBtn:"Cerrar sesión", switchToSignUp:"¿Sin cuenta? Regístrate", switchToSignIn:"¿Ya tienes cuenta? Inicia sesión",
-      syncedAs:"Sincronizado como:", authFillBoth:"Introduce email y contraseña", authCheckEmail:"Revisa tu correo para confirmar el registro",
+      syncedAs:"Sincronizado como:", authFillBoth:"Completa los campos obligatorios", authCheckEmail:"Revisa tu correo para confirmar el registro",
+      authPasswordMismatch:"Las contraseñas no coinciden", confirmSignOut:"¿Cerrar sesión de tu cuenta?",
+      firstNamePlaceholder:"Nombre", lastNamePlaceholder:"Apellido", confirmPasswordPlaceholder:"Repite la contraseña", birthDatePlaceholder:"Fecha de nacimiento",
+      gateTitle:"Bienvenido a Iron Log", gateSubtitle:"Crea una cuenta para que tu progreso nunca se pierda",
+      gateFeature1:"Registra entrenos y récords personales", gateFeature2:"Sincroniza entre todos tus dispositivos",
+      gateFeature3:"Horarios, plantillas y fotos de progreso", gateFeature4:"Tus datos se quedan contigo para siempre",
       syncHint:"Inicia sesión para guardar tus datos en la nube y no perderlos", syncingLabel:"Sincronizando…", syncErrorLabel:"Error de sincronización",
       restBetweenSets:"Descanso entre series", minShort:"min", secShort:"seg", dontAskAgain:"No preguntar más",
       noRestBtn:"Sin descanso", startBtn:"Empezar",
-      restLabel:"DESCANSO", skipBtn:"Saltar", collapseBtn:"Contraer", restOverToast:"Descanso terminado 💪",
+      restLabel:"DESCANSO", skipBtn:"Saltar", collapseBtn:"Contraer", restOverToast:"Descanso terminado",
       photoLoadFailed:"No se pudo cargar la foto", confirmDeleteSession:"¿Eliminar todo este día de entreno? No se puede deshacer.",
-      today:"Hoy", yesterday:"Ayer", volumeLabel:"volumen"
+      today:"Hoy", yesterday:"Ayer", volumeLabel:"volumen",
+      termsTitle:"Condiciones de uso", termsBody:"La aplicación se ofrece tal cual. Tus datos de entrenamiento se guardan en tu cuenta y solo se usan para el funcionamiento de Iron Log.",
+      contactTitle:"¿Encontraste un error o tienes una sugerencia?", contactBody:"Escríbenos a"
     },
     fr: {
       navWorkout:"Entraînement", navSchedule:"Planning", navRecords:"Records", navPhotos:"Photos",
       titleWorkout:"Mon entraînement", titleSchedule:"Planning", titleRecords:"Records", titlePhotos:"Photos de progrès",
-      restTitle:"Pas d'entraînement aujourd'hui", restSubtitle:"Repose-toi ! 💤",
+      restTitle:"Pas d'entraînement aujourd'hui", restSubtitle:"Repose-toi et récupère",
       noExercisesToday:"Aucun exercice ajouté pour aujourd'hui", configureSchedule:"Configurer le planning",
       exerciseNamePlaceholder:"Nom de l'exercice", addExerciseBtn:"Ajouter un exercice à aujourd'hui",
       bestLabel:"Meilleur :", noDataYet:"Pas encore de données",
@@ -287,6 +338,9 @@
       restDay:"Jour de repos", workoutDay:"Jour d'entraînement",
       saveTemplate:"Enregistrer comme modèle", applyTemplate:"Appliquer un modèle", templateNamePrompt:"Nom du modèle",
       templatesTitle:"Modèles de jour", noTemplates:"Aucun modèle pour l'instant", deleteTemplateConfirm:"Supprimer ce modèle ?", confirmApplyTemplate:"Remplacer les exercices actuels par ce modèle ?",
+      quickFillBtn:"Remplissage rapide", legendPlanned:"Planifié", legendDone:"Terminé", confirmRemoveWorkoutDay:"Retirer l'entraînement de ce jour ? Ses exercices seront supprimés.",
+      quickFillWeekdaysLabel:"JOURS DE LA SEMAINE", quickFillExercisesLabel:"EXERCICES", quickFillFromTemplate:"Choisir un modèle", quickFillMonthsLabel:"REMPLIR POUR COMBIEN DE MOIS",
+      quickFillApplyBtn:"Appliquer", quickFillNeedsBoth:"Choisissez des jours et ajoutez des exercices", confirmQuickFillOverwrite:"Certains jours ont déjà des exercices, les remplacer ?", quickFillApplied:"Planning rempli",
       newTemplateNamePlaceholder:"Ex. : Jour de jambes", templateSaved:"Modèle enregistré", templateApplied:"Modèle appliqué",
       maxWeightLabel:"POIDS MAX", repsShort:"réps.", notEnoughData:"Données insuffisantes", progressTitle:"PROGRÈS ~1RM",
       noRecords:"Enregistrez des séries pour voir vos records",
@@ -297,18 +351,25 @@
       defaultDurationLabel:"Durée par défaut", languageLabel:"LANGUE",
       accountLabel:"COMPTE", emailPlaceholder:"Email", passwordPlaceholder:"Mot de passe", signInBtn:"Se connecter", signUpBtn:"S'inscrire",
       signOutBtn:"Se déconnecter", switchToSignUp:"Pas de compte ? S'inscrire", switchToSignIn:"Déjà un compte ? Se connecter",
-      syncedAs:"Synchronisé en tant que :", authFillBoth:"Entrez l'email et le mot de passe", authCheckEmail:"Vérifiez votre email pour confirmer l'inscription",
+      syncedAs:"Synchronisé en tant que :", authFillBoth:"Remplissez les champs obligatoires", authCheckEmail:"Vérifiez votre email pour confirmer l'inscription",
+      authPasswordMismatch:"Les mots de passe ne correspondent pas", confirmSignOut:"Se déconnecter de votre compte ?",
+      firstNamePlaceholder:"Prénom", lastNamePlaceholder:"Nom", confirmPasswordPlaceholder:"Confirmez le mot de passe", birthDatePlaceholder:"Date de naissance",
+      gateTitle:"Bienvenue sur Iron Log", gateSubtitle:"Créez un compte pour que votre progression ne soit jamais perdue",
+      gateFeature1:"Suivi des entraînements et records personnels", gateFeature2:"Synchronisation sur tous vos appareils",
+      gateFeature3:"Plannings, modèles et photos de progrès", gateFeature4:"Vos données restent avec vous pour toujours",
       syncHint:"Connectez-vous pour sauvegarder vos données dans le cloud", syncingLabel:"Synchronisation…", syncErrorLabel:"Erreur de synchronisation",
       restBetweenSets:"Repos entre les séries", minShort:"min", secShort:"sec", dontAskAgain:"Ne plus demander",
       noRestBtn:"Pas de repos", startBtn:"Démarrer",
-      restLabel:"REPOS", skipBtn:"Passer", collapseBtn:"Réduire", restOverToast:"Repos terminé 💪",
+      restLabel:"REPOS", skipBtn:"Passer", collapseBtn:"Réduire", restOverToast:"Repos terminé",
       photoLoadFailed:"Échec du chargement de la photo", confirmDeleteSession:"Supprimer toute cette journée d'entraînement ? Action irréversible.",
-      today:"Aujourd'hui", yesterday:"Hier", volumeLabel:"volume"
+      today:"Aujourd'hui", yesterday:"Hier", volumeLabel:"volume",
+      termsTitle:"Conditions d'utilisation", termsBody:"L'application est fournie telle quelle. Vos données d'entraînement sont stockées dans votre compte et utilisées uniquement pour le fonctionnement d'Iron Log.",
+      contactTitle:"Vous avez trouvé un bug ou une suggestion ?", contactBody:"Écrivez-nous à"
     },
     de: {
       navWorkout:"Training", navSchedule:"Plan", navRecords:"Rekorde", navPhotos:"Fotos",
       titleWorkout:"Mein Training", titleSchedule:"Trainingsplan", titleRecords:"Rekorde", titlePhotos:"Fortschrittsfotos",
-      restTitle:"Heute kein Training", restSubtitle:"Erhol dich! 💤",
+      restTitle:"Heute kein Training", restSubtitle:"Ruh dich aus und erhole dich",
       noExercisesToday:"Noch keine Übungen für heute", configureSchedule:"Plan einrichten",
       exerciseNamePlaceholder:"Übungsname", addExerciseBtn:"Übung zu heute hinzufügen",
       bestLabel:"Bestwert:", noDataYet:"Noch keine Daten",
@@ -324,6 +385,9 @@
       restDay:"Ruhetag", workoutDay:"Trainingstag",
       saveTemplate:"Als Vorlage speichern", applyTemplate:"Vorlage anwenden", templateNamePrompt:"Vorlagenname",
       templatesTitle:"Tagesvorlagen", noTemplates:"Noch keine Vorlagen", deleteTemplateConfirm:"Diese Vorlage löschen?", confirmApplyTemplate:"Aktuelle Übungen durch diese Vorlage ersetzen?",
+      quickFillBtn:"Schnellausfüllen", legendPlanned:"Geplant", legendDone:"Erledigt", confirmRemoveWorkoutDay:"Training an diesem Tag entfernen? Übungen werden gelöscht.",
+      quickFillWeekdaysLabel:"WOCHENTAGE", quickFillExercisesLabel:"ÜBUNGEN", quickFillFromTemplate:"Aus Vorlage wählen", quickFillMonthsLabel:"FÜR WIE VIELE MONATE IM VORAUS",
+      quickFillApplyBtn:"Anwenden", quickFillNeedsBoth:"Wähle Wochentage und füge Übungen hinzu", confirmQuickFillOverwrite:"Manche Tage haben schon Übungen — ersetzen?", quickFillApplied:"Plan ausgefüllt",
       newTemplateNamePlaceholder:"Z. B.: Beintag", templateSaved:"Vorlage gespeichert", templateApplied:"Vorlage angewendet",
       maxWeightLabel:"MAX. GEWICHT", repsShort:"Wdh.", notEnoughData:"Nicht genug Daten", progressTitle:"~1RM VERLAUF",
       noRecords:"Erfasse Sätze, um deine Rekorde zu sehen",
@@ -334,18 +398,25 @@
       defaultDurationLabel:"Standarddauer", languageLabel:"SPRACHE",
       accountLabel:"KONTO", emailPlaceholder:"E-Mail", passwordPlaceholder:"Passwort", signInBtn:"Anmelden", signUpBtn:"Registrieren",
       signOutBtn:"Abmelden", switchToSignUp:"Kein Konto? Registrieren", switchToSignIn:"Schon ein Konto? Anmelden",
-      syncedAs:"Synchronisiert als:", authFillBoth:"E-Mail und Passwort eingeben", authCheckEmail:"Prüfe deine E-Mail, um die Registrierung zu bestätigen",
+      syncedAs:"Synchronisiert als:", authFillBoth:"Bitte alle Pflichtfelder ausfüllen", authCheckEmail:"Prüfe deine E-Mail, um die Registrierung zu bestätigen",
+      authPasswordMismatch:"Passwörter stimmen nicht überein", confirmSignOut:"Vom Konto abmelden?",
+      firstNamePlaceholder:"Vorname", lastNamePlaceholder:"Nachname", confirmPasswordPlaceholder:"Passwort wiederholen", birthDatePlaceholder:"Geburtsdatum",
+      gateTitle:"Willkommen bei Iron Log", gateSubtitle:"Erstelle ein Konto, damit dein Fortschritt nie verloren geht",
+      gateFeature1:"Trainings und persönliche Rekorde verfolgen", gateFeature2:"Synchronisierung auf allen Geräten",
+      gateFeature3:"Pläne, Vorlagen und Fortschrittsfotos", gateFeature4:"Deine Daten bleiben für immer bei dir",
       syncHint:"Melde dich an, damit deine Daten in der Cloud gespeichert werden", syncingLabel:"Synchronisierung…", syncErrorLabel:"Synchronisierungsfehler",
       restBetweenSets:"Pause zwischen Sätzen", minShort:"Min", secShort:"Sek", dontAskAgain:"Nicht mehr fragen",
       noRestBtn:"Keine Pause", startBtn:"Starten",
-      restLabel:"PAUSE", skipBtn:"Überspringen", collapseBtn:"Einklappen", restOverToast:"Pause vorbei 💪",
+      restLabel:"PAUSE", skipBtn:"Überspringen", collapseBtn:"Einklappen", restOverToast:"Pause vorbei",
       photoLoadFailed:"Foto konnte nicht geladen werden", confirmDeleteSession:"Diesen ganzen Trainingstag löschen? Kann nicht rückgängig gemacht werden.",
-      today:"Heute", yesterday:"Gestern", volumeLabel:"Volumen"
+      today:"Heute", yesterday:"Gestern", volumeLabel:"Volumen",
+      termsTitle:"Nutzungsbedingungen", termsBody:"Die App wird wie besehen bereitgestellt. Deine Trainingsdaten werden in deinem Konto gespeichert und nur für den Betrieb von Iron Log verwendet.",
+      contactTitle:"Fehler gefunden oder einen Vorschlag?", contactBody:"Schreib uns an"
     },
     ja: {
       navWorkout:"トレーニング", navSchedule:"予定", navRecords:"記録", navPhotos:"写真",
       titleWorkout:"今日のトレーニング", titleSchedule:"予定", titleRecords:"記録", titlePhotos:"経過写真",
-      restTitle:"今日は休養日", restSubtitle:"ゆっくり休もう 💤",
+      restTitle:"今日は休養日", restSubtitle:"ゆっくり休んで回復しよう",
       noExercisesToday:"今日の種目はまだありません", configureSchedule:"予定を設定",
       exerciseNamePlaceholder:"種目名", addExerciseBtn:"今日に種目を追加",
       bestLabel:"自己ベスト:", noDataYet:"データがありません",
@@ -361,6 +432,9 @@
       restDay:"休養日", workoutDay:"トレーニング日",
       saveTemplate:"テンプレートとして保存", applyTemplate:"テンプレートを適用", templateNamePrompt:"テンプレート名",
       templatesTitle:"日別テンプレート", noTemplates:"テンプレートはまだありません", deleteTemplateConfirm:"このテンプレートを削除しますか？", confirmApplyTemplate:"現在の種目をこのテンプレートに置き換えますか？",
+      quickFillBtn:"クイック入力", legendPlanned:"予定あり", legendDone:"完了", confirmRemoveWorkoutDay:"この日のトレーニングを削除しますか？種目も削除されます。",
+      quickFillWeekdaysLabel:"曜日", quickFillExercisesLabel:"種目", quickFillFromTemplate:"テンプレートから選択", quickFillMonthsLabel:"何ヶ月先まで入力するか",
+      quickFillApplyBtn:"適用", quickFillNeedsBoth:"曜日を選んで種目を追加してください", confirmQuickFillOverwrite:"一部の日にはすでに種目があります。置き換えますか？", quickFillApplied:"予定を入力しました",
       newTemplateNamePlaceholder:"例：脚の日", templateSaved:"テンプレートを保存しました", templateApplied:"テンプレートを適用しました",
       maxWeightLabel:"最大重量", repsShort:"回", notEnoughData:"データが不足しています", progressTitle:"~1RM の推移",
       noRecords:"セットを記録すると記録が表示されます",
@@ -371,18 +445,25 @@
       defaultDurationLabel:"デフォルトの時間", languageLabel:"言語",
       accountLabel:"アカウント", emailPlaceholder:"メール", passwordPlaceholder:"パスワード", signInBtn:"ログイン", signUpBtn:"新規登録",
       signOutBtn:"ログアウト", switchToSignUp:"アカウントをお持ちでない方は新規登録", switchToSignIn:"アカウントをお持ちの方はログイン",
-      syncedAs:"同期中:", authFillBoth:"メールとパスワードを入力してください", authCheckEmail:"登録確認のためメールを確認してください",
+      syncedAs:"同期中:", authFillBoth:"必須項目を入力してください", authCheckEmail:"登録確認のためメールを確認してください",
+      authPasswordMismatch:"パスワードが一致しません", confirmSignOut:"アカウントからログアウトしますか？",
+      firstNamePlaceholder:"名", lastNamePlaceholder:"姓", confirmPasswordPlaceholder:"パスワード（確認）", birthDatePlaceholder:"生年月日",
+      gateTitle:"Iron Logへようこそ", gateSubtitle:"アカウントを作成すると進捗が失われません",
+      gateFeature1:"トレーニングと自己ベストを記録", gateFeature2:"すべてのデバイスで同期",
+      gateFeature3:"予定・テンプレート・経過写真", gateFeature4:"データはずっとあなたのもの",
       syncHint:"ログインするとデータがクラウドに保存され失われません", syncingLabel:"同期中…", syncErrorLabel:"同期エラー",
       restBetweenSets:"セット間の休憩", minShort:"分", secShort:"秒", dontAskAgain:"次回から確認しない",
       noRestBtn:"休憩なし", startBtn:"開始",
-      restLabel:"休憩中", skipBtn:"スキップ", collapseBtn:"閉じる", restOverToast:"休憩終了 💪",
+      restLabel:"休憩中", skipBtn:"スキップ", collapseBtn:"閉じる", restOverToast:"休憩終了",
       photoLoadFailed:"写真を読み込めませんでした", confirmDeleteSession:"このトレーニング日を削除しますか？元に戻せません。",
-      today:"今日", yesterday:"昨日", volumeLabel:"総量"
+      today:"今日", yesterday:"昨日", volumeLabel:"総量",
+      termsTitle:"利用規約", termsBody:"本アプリは現状のまま提供されます。トレーニングデータはアカウントに保存され、Iron Logの動作のみに使用されます。",
+      contactTitle:"バグを見つけた、またはご要望がありますか？", contactBody:"こちらまでご連絡ください："
     },
     he: {
       navWorkout:"אימון", navSchedule:"לוח זמנים", navRecords:"שיאים", navPhotos:"תמונות",
       titleWorkout:"האימון שלי", titleSchedule:"לוח זמנים", titleRecords:"שיאים", titlePhotos:"תמונות התקדמות",
-      restTitle:"אין אימון היום", restSubtitle:"תנוח! 💤",
+      restTitle:"אין אימון היום", restSubtitle:"נוח והתאושש",
       noExercisesToday:"עדיין אין תרגילים להיום", configureSchedule:"הגדר לוח זמנים",
       exerciseNamePlaceholder:"שם התרגיל", addExerciseBtn:"הוסף תרגיל להיום",
       bestLabel:"שיא:", noDataYet:"אין עדיין נתונים",
@@ -398,6 +479,9 @@
       restDay:"יום מנוחה", workoutDay:"יום אימון",
       saveTemplate:"שמור כתבנית", applyTemplate:"החל תבנית", templateNamePrompt:"שם התבנית",
       templatesTitle:"תבניות יום", noTemplates:"עדיין אין תבניות", deleteTemplateConfirm:"למחוק את התבנית הזו?", confirmApplyTemplate:"להחליף את התרגילים הנוכחיים בתבנית הזו?",
+      quickFillBtn:"מילוי מהיר", legendPlanned:"מתוכנן", legendDone:"בוצע", confirmRemoveWorkoutDay:"להסיר את האימון ביום זה? התרגילים יימחקו.",
+      quickFillWeekdaysLabel:"ימים בשבוע", quickFillExercisesLabel:"תרגילים", quickFillFromTemplate:"בחר מתבנית", quickFillMonthsLabel:"למלא לכמה חודשים קדימה",
+      quickFillApplyBtn:"החל", quickFillNeedsBoth:"בחר ימים והוסף תרגילים", confirmQuickFillOverwrite:"בחלק מהימים כבר יש תרגילים — להחליף אותם?", quickFillApplied:"הלוח מולא",
       newTemplateNamePlaceholder:"לדוגמה: יום רגליים", templateSaved:"התבנית נשמרה", templateApplied:"התבנית הוחלה",
       maxWeightLabel:"משקל מקס'", repsShort:"חזרות", notEnoughData:"אין מספיק נתונים", progressTitle:"התקדמות ~1RM",
       noRecords:"רשום סטים כדי לראות את השיאים שלך",
@@ -408,18 +492,25 @@
       defaultDurationLabel:"משך זמן ברירת מחדל", languageLabel:"שפה",
       accountLabel:"חשבון", emailPlaceholder:"אימייל", passwordPlaceholder:"סיסמה", signInBtn:"התחבר", signUpBtn:"הרשמה",
       signOutBtn:"התנתק", switchToSignUp:"אין חשבון? הרשמה", switchToSignIn:"כבר יש חשבון? התחבר",
-      syncedAs:"מסונכרן כ:", authFillBoth:"הזן אימייל וסיסמה", authCheckEmail:"בדוק את האימייל שלך לאישור ההרשמה",
+      syncedAs:"מסונכרן כ:", authFillBoth:"מלא את השדות הנדרשים", authCheckEmail:"בדוק את האימייל שלך לאישור ההרשמה",
+      authPasswordMismatch:"הסיסמאות אינן תואמות", confirmSignOut:"להתנתק מהחשבון?",
+      firstNamePlaceholder:"שם פרטי", lastNamePlaceholder:"שם משפחה", confirmPasswordPlaceholder:"אימות סיסמה", birthDatePlaceholder:"תאריך לידה",
+      gateTitle:"ברוכים הבאים ל-Iron Log", gateSubtitle:"צור חשבון כדי שההתקדמות שלך לעולם לא תאבד",
+      gateFeature1:"מעקב אחר אימונים ושיאים אישיים", gateFeature2:"סנכרון בין כל המכשירים שלך",
+      gateFeature3:"לוחות זמנים, תבניות ותמונות התקדמות", gateFeature4:"הנתונים שלך נשארים איתך לתמיד",
       syncHint:"התחבר כדי לשמור את הנתונים שלך בענן ולא לאבד אותם", syncingLabel:"מסנכרן…", syncErrorLabel:"שגיאת סנכרון",
       restBetweenSets:"מנוחה בין סטים", minShort:"דק'", secShort:"שנ'", dontAskAgain:"אל תשאל שוב",
       noRestBtn:"בלי מנוחה", startBtn:"התחל",
-      restLabel:"מנוחה", skipBtn:"דלג", collapseBtn:"כווץ", restOverToast:"המנוחה נגמרה 💪",
+      restLabel:"מנוחה", skipBtn:"דלג", collapseBtn:"כווץ", restOverToast:"המנוחה נגמרה",
       photoLoadFailed:"טעינת התמונה נכשלה", confirmDeleteSession:"למחוק את כל יום האימון הזה? לא ניתן לבטל.",
-      today:"היום", yesterday:"אתמול", volumeLabel:"נפח"
+      today:"היום", yesterday:"אתמול", volumeLabel:"נפח",
+      termsTitle:"תנאי שימוש", termsBody:"האפליקציה מסופקת כפי שהיא. נתוני האימונים שלך נשמרים בחשבון שלך ומשמשים רק להפעלת Iron Log.",
+      contactTitle:"מצאת באג או יש לך הצעה?", contactBody:"כתבו לנו לכתובת"
     },
     ar: {
       navWorkout:"التمرين", navSchedule:"الجدول", navRecords:"الأرقام القياسية", navPhotos:"الصور",
       titleWorkout:"تمريني", titleSchedule:"الجدول", titleRecords:"الأرقام القياسية", titlePhotos:"صور التقدم",
-      restTitle:"لا يوجد تمرين اليوم", restSubtitle:"استرح! 💤",
+      restTitle:"لا يوجد تمرين اليوم", restSubtitle:"استرح وتعافَ",
       noExercisesToday:"لا توجد تمارين لليوم بعد", configureSchedule:"إعداد الجدول",
       exerciseNamePlaceholder:"اسم التمرين", addExerciseBtn:"أضف تمرينًا لليوم",
       bestLabel:"الأفضل:", noDataYet:"لا توجد بيانات بعد",
@@ -435,6 +526,9 @@
       restDay:"يوم راحة", workoutDay:"يوم تمرين",
       saveTemplate:"حفظ كقالب", applyTemplate:"تطبيق قالب", templateNamePrompt:"اسم القالب",
       templatesTitle:"قوالب اليوم", noTemplates:"لا توجد قوالب بعد", deleteTemplateConfirm:"حذف هذا القالب؟", confirmApplyTemplate:"استبدال التمارين الحالية بهذا القالب؟",
+      quickFillBtn:"تعبئة سريعة", legendPlanned:"مخطط", legendDone:"تم", confirmRemoveWorkoutDay:"إزالة التمرين في هذا اليوم؟ سيتم حذف تمارينه.",
+      quickFillWeekdaysLabel:"أيام الأسبوع", quickFillExercisesLabel:"التمارين", quickFillFromTemplate:"اختر من قالب", quickFillMonthsLabel:"التعبئة لعدد الأشهر القادمة",
+      quickFillApplyBtn:"تطبيق", quickFillNeedsBoth:"اختر أيام الأسبوع وأضف تمارين", confirmQuickFillOverwrite:"بعض الأيام تحتوي على تمارين بالفعل — استبدالها؟", quickFillApplied:"تم ملء الجدول",
       newTemplateNamePlaceholder:"مثال: يوم الأرجل", templateSaved:"تم حفظ القالب", templateApplied:"تم تطبيق القالب",
       maxWeightLabel:"أقصى وزن", repsShort:"تكرار", notEnoughData:"بيانات غير كافية", progressTitle:"تقدّم ~1RM",
       noRecords:"سجّل مجموعات لرؤية أرقامك القياسية",
@@ -445,13 +539,20 @@
       defaultDurationLabel:"المدة الافتراضية", languageLabel:"اللغة",
       accountLabel:"الحساب", emailPlaceholder:"البريد الإلكتروني", passwordPlaceholder:"كلمة المرور", signInBtn:"تسجيل الدخول", signUpBtn:"إنشاء حساب",
       signOutBtn:"تسجيل الخروج", switchToSignUp:"لا يوجد حساب؟ أنشئ حسابًا", switchToSignIn:"لديك حساب بالفعل؟ سجّل الدخول",
-      syncedAs:"مُزامَن باسم:", authFillBoth:"أدخل البريد الإلكتروني وكلمة المرور", authCheckEmail:"تحقق من بريدك الإلكتروني لتأكيد التسجيل",
+      syncedAs:"مُزامَن باسم:", authFillBoth:"يرجى ملء الحقول المطلوبة", authCheckEmail:"تحقق من بريدك الإلكتروني لتأكيد التسجيل",
+      authPasswordMismatch:"كلمتا المرور غير متطابقتين", confirmSignOut:"تسجيل الخروج من الحساب؟",
+      firstNamePlaceholder:"الاسم الأول", lastNamePlaceholder:"اسم العائلة", confirmPasswordPlaceholder:"تأكيد كلمة المرور", birthDatePlaceholder:"تاريخ الميلاد",
+      gateTitle:"مرحبًا بك في Iron Log", gateSubtitle:"أنشئ حسابًا حتى لا يضيع تقدّمك أبدًا",
+      gateFeature1:"تتبع التمارين والأرقام القياسية الشخصية", gateFeature2:"مزامنة عبر جميع أجهزتك",
+      gateFeature3:"الجداول والقوالب وصور التقدم", gateFeature4:"تبقى بياناتك معك إلى الأبد",
       syncHint:"سجّل الدخول ليتم حفظ بياناتك في السحابة وعدم فقدانها", syncingLabel:"جارٍ المزامنة…", syncErrorLabel:"خطأ في المزامنة",
       restBetweenSets:"الراحة بين المجموعات", minShort:"د", secShort:"ث", dontAskAgain:"لا تسأل مرة أخرى",
       noRestBtn:"بدون راحة", startBtn:"ابدأ",
-      restLabel:"راحة", skipBtn:"تخطي", collapseBtn:"طي", restOverToast:"انتهت الراحة 💪",
+      restLabel:"راحة", skipBtn:"تخطي", collapseBtn:"طي", restOverToast:"انتهت الراحة",
       photoLoadFailed:"تعذّر تحميل الصورة", confirmDeleteSession:"حذف يوم التمرين هذا بالكامل؟ لا يمكن التراجع.",
-      today:"اليوم", yesterday:"أمس", volumeLabel:"الحجم"
+      today:"اليوم", yesterday:"أمس", volumeLabel:"الحجم",
+      termsTitle:"شروط الاستخدام", termsBody:"يتم توفير التطبيق كما هو. يتم تخزين بيانات تمارينك في حسابك واستخدامها فقط لتشغيل Iron Log.",
+      contactTitle:"وجدت خطأ أو لديك اقتراح؟", contactBody:"راسلنا على"
     }
   };
 
@@ -491,14 +592,9 @@
   const PICKER_ITEM_H = 44;
 
   function defaultState(){
-    const schedule = {};
-    DAY_KEYS.forEach(k => schedule[k] = { active: false, exercises: [] });
-    schedule.mon = { active: true, exercises: ["Жим лёжа","Присед","Тяга блока"] };
-    schedule.wed = { active: true, exercises: ["Становая тяга","Жим стоя","Подтягивания"] };
-    schedule.fri = { active: true, exercises: ["Присед","Жим лёжа","Тяга штанги в наклоне"] };
     return {
-      schedule,
-      exercises: ["Жим лёжа","Присед","Становая тяга","Жим стоя","Тяга блока","Подтягивания","Тяга штанги в наклоне"],
+      schedule: {}, // sparse map: "YYYY-MM-DD" -> { exercises: [...] }. Absence = rest day.
+      exercises: [],
       sessions: [],
       photos: [],
       exerciseImages: {},
@@ -515,6 +611,8 @@
     if (!parsed.dayTemplates) parsed.dayTemplates = [];
     if (!parsed.photos) parsed.photos = [];
     if (!parsed.timerSettings) parsed.timerSettings = { defaultSeconds: 90, skipPrompt: false };
+    // Discard any legacy weekday-keyed schedule (mon/tue/...) from the old weekly-template system.
+    DAY_KEYS.forEach(k => { if (parsed.schedule[k] && "active" in parsed.schedule[k]) delete parsed.schedule[k]; });
     return parsed;
   }
 
@@ -561,7 +659,8 @@
   let ui = {
     tab: "workout",
     workout: { view: "list", activeExercise: null, rpeOpen: false, splitSides: false, addingExercise: false },
-    schedule: { view: "list", activeDay: null },
+    schedule: { view: "calendar", activeDate: null, viewYear: new Date().getFullYear(), viewMonth: new Date().getMonth() },
+    quickFill: { open: false, weekdays: [], exercises: [], newExerciseValue: "", monthsAhead: 1 },
     photos: { adding: false, lightboxId: null, draftImage: null, weightDraft: "", dateDraft: "" },
     settingsOpen: false,
     pickerOpen: false, pickerMinutes: 1, pickerSeconds: 30,
@@ -572,8 +671,109 @@
     imageLightbox: null,
     noteEditing: false,
     templatesOpen: false,
-    auth: { mode: "signin", busy: false, error: "" }
+    auth: { mode: "signin", busy: false, error: "" },
+    gate: { bannerIndex: 0, birthDate: null, birthDatePick: null }
   };
+
+  const TAB_ORDER = ["workout", "schedule", "records", "photos"];
+  let gateBannerTimer = null;
+
+  function gateBannerSvgs(){
+    return [
+      // Dumbbell — moody spotlight
+      `<svg viewBox="0 0 400 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="gb1bg" cx="50%" cy="32%" r="80%">
+            <stop offset="0%" stop-color="#0e4433"/><stop offset="55%" stop-color="#052e21"/><stop offset="100%" stop-color="#020806"/>
+          </radialGradient>
+          <radialGradient id="gb1glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#34d399" stop-opacity="0.32"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="gb1bar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#e4e4e7"/><stop offset="45%" stop-color="#71717a"/><stop offset="100%" stop-color="#27272a"/>
+          </linearGradient>
+          <linearGradient id="gb1plate" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#52525b"/><stop offset="50%" stop-color="#1c1c1f"/><stop offset="100%" stop-color="#050505"/>
+          </linearGradient>
+        </defs>
+        <rect width="400" height="300" fill="url(#gb1bg)"/>
+        <ellipse cx="200" cy="150" rx="190" ry="130" fill="url(#gb1glow)"/>
+        <g transform="translate(200,155) rotate(-7)">
+          <rect x="-140" y="-7" width="280" height="14" rx="7" fill="url(#gb1bar)"/>
+          <rect x="-40" y="-9" width="80" height="4" rx="2" fill="#d4d4d8" opacity="0.5"/>
+          <rect x="-164" y="-44" width="28" height="88" rx="9" fill="url(#gb1plate)" stroke="#52525b" stroke-width="1.5"/>
+          <rect x="-130" y="-30" width="16" height="60" rx="6" fill="url(#gb1plate)" stroke="#52525b" stroke-width="1.5"/>
+          <rect x="136" y="-44" width="28" height="88" rx="9" fill="url(#gb1plate)" stroke="#52525b" stroke-width="1.5"/>
+          <rect x="114" y="-30" width="16" height="60" rx="6" fill="url(#gb1plate)" stroke="#52525b" stroke-width="1.5"/>
+        </g>
+        <ellipse cx="200" cy="248" rx="150" ry="14" fill="#000" opacity="0.35"/>
+      </svg>`,
+      // Barbell with big plates — angled
+      `<svg viewBox="0 0 400 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="gb2bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0a5440"/><stop offset="60%" stop-color="#022c22"/><stop offset="100%" stop-color="#010a08"/>
+          </linearGradient>
+          <radialGradient id="gb2plate" cx="35%" cy="28%" r="78%">
+            <stop offset="0%" stop-color="#5b5b63"/><stop offset="55%" stop-color="#1f1f23"/><stop offset="100%" stop-color="#050505"/>
+          </radialGradient>
+          <linearGradient id="gb2bar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#e4e4e7"/><stop offset="50%" stop-color="#71717a"/><stop offset="100%" stop-color="#27272a"/>
+          </linearGradient>
+        </defs>
+        <rect width="400" height="300" fill="url(#gb2bg)"/>
+        <g transform="translate(200,150) rotate(-18)">
+          <rect x="-175" y="-6" width="350" height="12" rx="6" fill="url(#gb2bar)"/>
+          <circle cx="-178" cy="0" r="60" fill="url(#gb2plate)" stroke="#3f3f46" stroke-width="2"/>
+          <circle cx="-178" cy="0" r="19" fill="#09090b"/>
+          <circle cx="178" cy="0" r="60" fill="url(#gb2plate)" stroke="#3f3f46" stroke-width="2"/>
+          <circle cx="178" cy="0" r="19" fill="#09090b"/>
+        </g>
+        <ellipse cx="200" cy="232" rx="150" ry="14" fill="#000" opacity="0.4"/>
+      </svg>`,
+      // Kettlebell
+      `<svg viewBox="0 0 400 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="gb3bg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0b4c3a"/><stop offset="100%" stop-color="#020705"/>
+          </linearGradient>
+          <radialGradient id="gb3kb" cx="35%" cy="22%" r="82%">
+            <stop offset="0%" stop-color="#52525b"/><stop offset="60%" stop-color="#18181b"/><stop offset="100%" stop-color="#020202"/>
+          </radialGradient>
+        </defs>
+        <rect width="400" height="300" fill="url(#gb3bg)"/>
+        <g transform="translate(200,158)">
+          <path d="M-22 -76 a22 22 0 0 1 44 0 v20 h-44 z" fill="none" stroke="#a1a1aa" stroke-width="11" stroke-linecap="round"/>
+          <path d="M-62 -22 C-64 42 -42 92 0 92 C42 92 64 42 62 -22 C60 -58 30 -54 0 -54 C-30 -54 -60 -58 -62 -22 Z" fill="url(#gb3kb)" stroke="#3f3f46" stroke-width="2"/>
+          <ellipse cx="-18" cy="-6" rx="14" ry="34" fill="#71717a" opacity="0.35"/>
+        </g>
+        <ellipse cx="200" cy="258" rx="95" ry="12" fill="#000" opacity="0.4"/>
+      </svg>`,
+      // Running shoe with motion lines
+      `<svg viewBox="0 0 400 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="gb4bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0c6b4e"/><stop offset="55%" stop-color="#043a2b"/><stop offset="100%" stop-color="#010806"/>
+          </linearGradient>
+          <linearGradient id="gb4shoe" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#065f46"/>
+          </linearGradient>
+        </defs>
+        <rect width="400" height="300" fill="url(#gb4bg)"/>
+        <g stroke="#34d399" stroke-width="4" opacity="0.3" stroke-linecap="round">
+          <path d="M250 90 L355 62"/>
+          <path d="M258 122 L370 98"/>
+          <path d="M262 154 L378 134"/>
+        </g>
+        <g transform="translate(70,150)">
+          <path d="M0 42 C8 12 42 -12 95 -22 C136 -30 172 -12 202 8 C218 18 222 34 212 44 L18 44 C4 44 -5 46 0 42 Z" fill="url(#gb4shoe)"/>
+          <path d="M18 44 L212 44 L217 55 C217 61 206 63 190 63 L28 63 C13 63 3 59 3 53 Z" fill="#022c22"/>
+          <path d="M40 6 C60 -6 85 -14 110 -16" fill="none" stroke="#022c22" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+        </g>
+        <ellipse cx="150" cy="222" rx="130" ry="12" fill="#000" opacity="0.35"/>
+      </svg>`
+    ];
+  }
 
   /* ---------------------------------------------------------------------
      Cloud Sync (Supabase)
@@ -604,69 +804,273 @@
       if (error) throw error;
       if (data && data.data){
         const normalized = normalizeState(data.data);
-        if (normalized){ state = normalized; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); render(); renderTimer(); }
+        if (normalized){ state = normalized; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
       } else {
         await pushStateToCloud();
       }
       syncStatus = "synced";
     } catch(e){ syncStatus = "error"; }
+    render();
+    renderTimer();
     if (ui.settingsOpen) renderSettingsModal();
   }
 
   async function initAuth(){
-    if (!sb) return;
+    if (!sb){ renderGate(); return; }
     try {
       const { data: { session } } = await sb.auth.getSession();
       supaUser = session ? session.user : null;
       if (supaUser) await pullStateFromCloud();
     } catch(e) {}
+    renderGate();
     sb.auth.onAuthStateChange((event, session) => {
       supaUser = session ? session.user : null;
-      if (event === "SIGNED_IN") pullStateFromCloud();
+      if (event === "SIGNED_IN"){ pullStateFromCloud(); renderGate(); }
+      if (event === "SIGNED_OUT") renderGate();
       if (ui.settingsOpen) renderSettingsModal();
     });
   }
 
   async function submitAuth(){
     if (!sb) return;
-    const email = (document.getElementById("authEmail")||{}).value || "";
+    const isSignup = ui.auth.mode === "signup";
+    const email = ((document.getElementById("authEmail")||{}).value || "").trim();
     const password = (document.getElementById("authPassword")||{}).value || "";
-    if (!email || !password){ ui.auth.error = T.authFillBoth; renderSettingsModal(); return; }
-    ui.auth.busy = true; ui.auth.error = ""; renderSettingsModal();
+    const firstName = isSignup ? ((document.getElementById("authFirstName")||{}).value || "").trim() : "";
+    const lastName = isSignup ? ((document.getElementById("authLastName")||{}).value || "").trim() : "";
+    const birthDate = isSignup ? ((document.getElementById("authBirthDate")||{}).value || "") : "";
+    const password2 = isSignup ? ((document.getElementById("authPassword2")||{}).value || "") : "";
+
+    if (!email || !password || (isSignup && !firstName)){ ui.auth.error = T.authFillBoth; renderGate(); return; }
+    if (isSignup && password !== password2){ ui.auth.error = T.authPasswordMismatch; renderGate(); return; }
+
+    ui.auth.busy = true; ui.auth.error = ""; renderGate();
     try {
-      if (ui.auth.mode === "signup"){
-        const { error } = await sb.auth.signUp({ email, password });
+      if (isSignup){
+        const { data, error } = await sb.auth.signUp({
+          email, password,
+          options: { data: { first_name: firstName, last_name: lastName, birth_date: birthDate } }
+        });
         if (error) throw error;
         ui.auth.busy = false;
-        ui.auth.error = "";
-        showToast(T.authCheckEmail, "pr");
-        renderSettingsModal();
+        if (data.session){
+          sound("select");
+        } else {
+          showToast(T.authCheckEmail, "pr");
+        }
+        renderGate();
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
         ui.auth.busy = false;
         sound("select");
-        renderSettingsModal();
+        renderGate();
       }
     } catch(e){
       ui.auth.busy = false;
       ui.auth.error = e.message || String(e);
-      renderSettingsModal();
+      renderGate();
     }
   }
 
   function toggleAuthMode(){
     ui.auth.mode = ui.auth.mode === "signin" ? "signup" : "signin";
     ui.auth.error = "";
-    renderSettingsModal();
+    sound("tap");
+    renderGate();
   }
 
   async function signOutCloud(){
     if (!sb) return;
+    if (!confirm(T.confirmSignOut)) return;
     await sb.auth.signOut();
     supaUser = null;
     sound("tap");
-    renderSettingsModal();
+    closeSettings();
+    renderGate();
+  }
+
+  function startBannerCycle(){
+    stopBannerCycle();
+    const count = gateBannerSvgs().length;
+    gateBannerTimer = setInterval(() => {
+      ui.gate.bannerIndex = (ui.gate.bannerIndex + 1) % count;
+      const stack = document.getElementById("gateBannerStack");
+      if (!stack) return;
+      Array.from(stack.children).forEach((el, i) => { el.style.opacity = i === ui.gate.bannerIndex ? "1" : "0"; });
+    }, 5000);
+  }
+  function stopBannerCycle(){ if (gateBannerTimer){ clearInterval(gateBannerTimer); gateBannerTimer = null; } }
+
+  /* ---------------------------------------------------------------------
+     Birth Date Wheel Picker
+  --------------------------------------------------------------------- */
+  function isoFromPick(pick){
+    return pick.year + "-" + String(pick.month+1).padStart(2,"0") + "-" + String(pick.day).padStart(2,"0");
+  }
+
+  function formatBirthDate(pick){
+    if (!pick) return "";
+    const d = new Date(pick.year, pick.month, pick.day);
+    return d.toLocaleDateString(LOCALE_TAGS[lang], { day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function daysInMonth(year, month){ return new Date(year, month + 1, 0).getDate(); }
+
+  function openBirthDatePicker(){
+    sound("tap");
+    const now = new Date();
+    ui.gate.birthDatePick = ui.gate.birthDate ? { ...ui.gate.birthDate } : { day: 1, month: 0, year: now.getFullYear() - 25 };
+    renderBirthDatePickerModal();
+  }
+
+  function closeBirthDatePicker(){
+    const host = document.getElementById("birthDatePickerHost");
+    if (host) host.innerHTML = "";
+  }
+
+  function confirmBirthDate(){
+    ui.gate.birthDate = { ...ui.gate.birthDatePick };
+    closeBirthDatePicker();
+    sound("select");
+    const label = document.getElementById("birthDateBtnLabel");
+    if (label){ label.textContent = formatBirthDate(ui.gate.birthDate); label.classList.remove("text-zinc-600"); label.classList.add("text-white"); }
+    const hidden = document.getElementById("authBirthDate");
+    if (hidden) hidden.value = isoFromPick(ui.gate.birthDate);
+  }
+
+  function renderBirthDatePickerModal(){
+    const host = document.getElementById("birthDatePickerHost");
+    if (!host) return;
+    const pick = ui.gate.birthDatePick;
+    const nowYear = new Date().getFullYear();
+    const DAY_VALUES = Array.from({ length: 31 }, (_,i) => i + 1);
+    const YEAR_VALUES = Array.from({ length: 90 }, (_,i) => nowYear - 10 - i);
+    const monthNames = Array.from({ length: 12 }, (_,m) => {
+      const name = new Intl.DateTimeFormat(LOCALE_TAGS[lang], { month: "long" }).format(new Date(2000, m, 1));
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    });
+
+    const dayCol = DAY_VALUES.map(v => `<div class="picker-item" data-value="${v}">${v}</div>`).join("");
+    const monthCol = monthNames.map((name,i) => `<div class="picker-item" style="font-size:1rem;" data-value="${i}">${name}</div>`).join("");
+    const yearCol = YEAR_VALUES.map(v => `<div class="picker-item" data-value="${v}">${v}</div>`).join("");
+
+    host.innerHTML = `
+    <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+      <div data-action="close-birthdate-picker" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8">
+        <div class="text-center mb-1">
+          <div class="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+          <div class="font-bold text-lg text-zinc-100">${T.birthDatePlaceholder}</div>
+        </div>
+        <div class="relative h-44 flex justify-center items-center gap-1.5 mt-3">
+          <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-11 bg-zinc-800/60 rounded-2xl pointer-events-none"></div>
+          <div id="pickerDay" class="picker-col w-12 text-center"><div style="height:66px"></div>${dayCol}<div style="height:66px"></div></div>
+          <div id="pickerMonth" class="picker-col w-28 text-center"><div style="height:66px"></div>${monthCol}<div style="height:66px"></div></div>
+          <div id="pickerYear" class="picker-col w-16 text-center"><div style="height:66px"></div>${yearCol}<div style="height:66px"></div></div>
+        </div>
+        <button data-action="confirm-birthdate" class="tap w-full mt-5 py-4 rounded-2xl bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-lg font-extrabold">${T.saveBtn}</button>
+      </div>
+    </div>`;
+    lucide.createIcons();
+
+    const dayEl = document.getElementById("pickerDay");
+    const monthEl = document.getElementById("pickerMonth");
+    const yearEl = document.getElementById("pickerYear");
+    dayEl.scrollTop = DAY_VALUES.indexOf(pick.day) * PICKER_ITEM_H;
+    monthEl.scrollTop = pick.month * PICKER_ITEM_H;
+    yearEl.scrollTop = YEAR_VALUES.indexOf(pick.year) * PICKER_ITEM_H;
+
+    function clampDay(){
+      const max = daysInMonth(pick.year, pick.month);
+      if (pick.day > max){
+        pick.day = max;
+        dayEl.scrollTop = DAY_VALUES.indexOf(pick.day) * PICKER_ITEM_H;
+      }
+    }
+
+    let dT, mT, yT;
+    dayEl.addEventListener("scroll", () => {
+      clearTimeout(dT);
+      dT = setTimeout(() => {
+        const idx = Math.round(dayEl.scrollTop / PICKER_ITEM_H);
+        pick.day = DAY_VALUES[Math.max(0, Math.min(DAY_VALUES.length-1, idx))];
+        sound("step");
+      }, 120);
+    });
+    monthEl.addEventListener("scroll", () => {
+      clearTimeout(mT);
+      mT = setTimeout(() => {
+        const idx = Math.round(monthEl.scrollTop / PICKER_ITEM_H);
+        pick.month = Math.max(0, Math.min(11, idx));
+        sound("step");
+        clampDay();
+      }, 120);
+    });
+    yearEl.addEventListener("scroll", () => {
+      clearTimeout(yT);
+      yT = setTimeout(() => {
+        const idx = Math.round(yearEl.scrollTop / PICKER_ITEM_H);
+        pick.year = YEAR_VALUES[Math.max(0, Math.min(YEAR_VALUES.length-1, idx))];
+        sound("step");
+        clampDay();
+      }, 120);
+    });
+  }
+
+  function renderGate(){
+    const host = document.getElementById("gateHost");
+    if (!sb || supaUser){
+      host.classList.add("hidden");
+      host.innerHTML = "";
+      stopBannerCycle();
+      return;
+    }
+    host.classList.remove("hidden");
+    const isSignup = ui.auth.mode === "signup";
+
+    const banners = gateBannerSvgs().map((svg,i) => `<div style="position:absolute;inset:0;opacity:${i===ui.gate.bannerIndex?1:0};transition:opacity 1.2s ease;">${svg}<div style="position:absolute;inset:0;background:linear-gradient(to bottom, transparent 55%, #09090b 100%);"></div></div>`).join("");
+
+    const checklist = [T.gateFeature1, T.gateFeature2, T.gateFeature3, T.gateFeature4].map(t => `
+      <div class="flex items-start gap-2.5">
+        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>
+        <div class="text-[15px] text-zinc-300">${t}</div>
+      </div>`).join("");
+
+    const signupFields = isSignup ? `
+      <div class="grid grid-cols-2 gap-3">
+        <input id="authFirstName" data-field="auth-firstname" type="text" placeholder="${T.firstNamePlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+        <input id="authLastName" data-field="auth-lastname" type="text" placeholder="${T.lastNamePlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+      </div>
+      <button type="button" data-action="open-birthdate-picker" class="tap w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] flex items-center justify-between outline-none focus:border-emerald-500/50">
+        <span id="birthDateBtnLabel" class="${ui.gate.birthDate ? "text-white" : "text-zinc-600"}">${ui.gate.birthDate ? formatBirthDate(ui.gate.birthDate) : T.birthDatePlaceholder}</span>
+        <i data-lucide="calendar" class="w-5 h-5 text-zinc-500 shrink-0"></i>
+      </button>
+      <input type="hidden" id="authBirthDate" value="${ui.gate.birthDate ? isoFromPick(ui.gate.birthDate) : ""}" />` : "";
+    const password2Field = isSignup ? `
+      <input id="authPassword2" data-field="auth-password2" type="password" autocomplete="new-password" placeholder="${T.confirmPasswordPlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />` : "";
+
+    host.innerHTML = `
+      <div class="w-full h-full flex flex-col overflow-y-auto">
+        <div id="gateBannerStack" class="relative w-full h-52 shrink-0 overflow-hidden rounded-b-[36px]">${banners}</div>
+        <div class="flex-1 px-5 pt-6 pb-10 anim-gate">
+          <div class="text-2xl font-extrabold text-white mb-1">${T.gateTitle}</div>
+          <div class="text-sm text-zinc-500 mb-5">${T.gateSubtitle}</div>
+          <div class="space-y-2.5 mb-6">${checklist}</div>
+          <div class="space-y-3">
+            ${signupFields}
+            <input id="authEmail" data-field="auth-email" type="email" autocomplete="email" placeholder="${T.emailPlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+            <input id="authPassword" data-field="auth-password" type="password" autocomplete="${isSignup?"new-password":"current-password"}" placeholder="${T.passwordPlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+            ${password2Field}
+            ${ui.auth.error ? `<div class="text-sm text-red-400 text-center">${escapeHtml(ui.auth.error)}</div>` : ""}
+          </div>
+          <button data-action="submit-auth" ${ui.auth.busy?"disabled":""} class="tap w-full mt-5 py-4 rounded-2xl bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-lg font-extrabold ${ui.auth.busy?"opacity-60":""}">${isSignup ? T.signUpBtn : T.signInBtn}</button>
+          <button data-action="toggle-auth-mode" class="tap w-full text-center text-sm font-semibold text-zinc-500 active:text-zinc-300 py-3 mt-1">${isSignup ? T.switchToSignIn : T.switchToSignUp}</button>
+        </div>
+      </div>
+      <div id="birthDatePickerHost"></div>`;
+    lucide.createIcons();
+    startBannerCycle();
   }
 
   /* ---------------------------------------------------------------------
@@ -675,7 +1079,6 @@
   function addDays(date, n){ const d = new Date(date); d.setDate(d.getDate()+n); return d; }
   function dateStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
   function todayStr(){ return dateStr(new Date()); }
-  function getTodayKey(){ return DAY_KEYS[(new Date().getDay()+6)%7]; }
   function mondayOf(date){ const d = new Date(date); d.setHours(0,0,0,0); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return d; }
 
   function fmtDateLabel(ds){
@@ -692,6 +1095,11 @@
   }
 
   function dayName(idx){ return DAY_NAMES[lang][idx]; }
+  function shortDayName(idx){
+    const ref = new Date(2024, 0, 1 + idx); // 2024-01-01 is a Monday
+    const s = new Intl.DateTimeFormat(LOCALE_TAGS[lang], { weekday: "short" }).format(ref);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
 
   function epley(weight, reps){ return weight * (1 + reps/30); }
 
@@ -828,9 +1236,9 @@
       const weekDays = [0,1,2,3,4,5,6].map(i => addDays(cursorMonday, i));
       let hasActive = false, complete = true;
       for (let i=0;i<7;i++){
-        if (state.schedule[DAY_KEYS[i]].active){
+        const ds = dateStr(weekDays[i]);
+        if (state.schedule[ds]){
           hasActive = true;
-          const ds = dateStr(weekDays[i]);
           const session = state.sessions.find(s => s.date === ds);
           if (!session || session.sets.length === 0){ complete = false; break; }
         }
@@ -870,7 +1278,7 @@
     const weeks = computeStreak();
     if (weeks <= 0) return "";
     return `<div class="flex items-center gap-1.5 bg-gradient-to-r from-orange-500/20 to-amber-500/10 border border-orange-500/30 px-3 py-1.5 rounded-full">
-      <span class="text-lg leading-none">🔥</span><span class="text-sm font-bold text-orange-400">${weeks}</span>
+      <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i><span class="text-sm font-bold text-orange-400">${weeks}</span>
     </div>`;
   }
 
@@ -900,7 +1308,7 @@
   function render(){
     renderHeader();
     if (ui.tab === "workout") (ui.workout.view === "logging" ? renderWorkoutLogging : renderWorkoutList)();
-    else if (ui.tab === "schedule") (ui.schedule.view === "day" ? renderScheduleDay : renderScheduleList)();
+    else if (ui.tab === "schedule") (ui.schedule.view === "day" ? renderScheduleDay : renderScheduleCalendar)();
     else if (ui.tab === "records") renderRecords();
     else renderPhotos();
     renderNav();
@@ -944,7 +1352,7 @@
     } else if (ui.tab === "schedule"){
       if (ui.schedule.view === "day"){
         left = backButtonHtml();
-        title = `<div class="font-bold text-white">${dayName(DAY_KEYS.indexOf(ui.schedule.activeDay))}</div>`;
+        title = `<div class="font-bold text-white">${fmtScheduleDayTitle(ui.schedule.activeDate)}</div>`;
       } else title = `<div class="font-bold text-white text-lg">${T.titleSchedule}</div>`;
     } else if (ui.tab === "records"){
       title = `<div class="font-bold text-white text-lg">${T.titleRecords}</div>`;
@@ -956,8 +1364,22 @@
       <div class="flex items-center gap-1 min-w-0">${left}${title}</div>
       <div class="flex items-center gap-2 shrink-0">
         ${right}
-        <button data-action="open-settings" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="settings" class="w-5 h-5"></i></button>
+        ${accountButtonHtml()}
       </div>`;
+  }
+
+  function accountButtonHtml(){
+    if (!supaUser){
+      return `<button data-action="open-settings" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="settings" class="w-5 h-5"></i></button>`;
+    }
+    const firstName = (supaUser.user_metadata && supaUser.user_metadata.first_name) || "";
+    const img = lastPhotoImage();
+    const avatarImg = img ? `<img src="${img}" class="w-full h-full object-cover" />` : `<div class="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><i data-lucide="user" class="w-5 h-5"></i></div>`;
+    const nameBtn = firstName ? `<button data-action="open-settings" class="tap"><span class="text-sm font-bold text-zinc-300 max-w-[80px] truncate">${escapeHtml(firstName)}</span></button>` : "";
+    return `<span class="flex items-center gap-2">
+      ${nameBtn}
+      <button data-action="${img ? "open-avatar-preview" : "open-settings"}" class="tap w-11 h-11 rounded-full overflow-hidden shrink-0 border-2 border-zinc-800">${avatarImg}</button>
+    </span>`;
   }
 
   /* ---------------------------------------------------------------------
@@ -966,14 +1388,20 @@
   function switchTab(tab){
     if (tab === ui.tab){
       if (tab === "workout" && ui.workout.view !== "list"){ workoutBack(); return; }
-      if (tab === "schedule" && ui.schedule.view !== "list"){ scheduleBack(); return; }
+      if (tab === "schedule" && ui.schedule.view !== "calendar"){ scheduleBack(); return; }
       return;
     }
     sound("tap");
+    const oldIdx = TAB_ORDER.indexOf(ui.tab);
+    const newIdx = TAB_ORDER.indexOf(tab);
     ui.tab = tab;
     ui.workout.view = "list";
-    ui.schedule.view = "list";
+    ui.schedule.view = "calendar";
     render();
+    const content = document.getElementById("content");
+    content.classList.remove("slide-right", "slide-left");
+    void content.offsetWidth;
+    content.classList.add(newIdx > oldIdx ? "slide-right" : "slide-left");
   }
 
   function navBack(){
@@ -982,7 +1410,9 @@
   }
 
   function gotoTodaySchedule(){
-    ui.tab = "schedule"; ui.schedule.view = "day"; ui.schedule.activeDay = getTodayKey();
+    const now = new Date();
+    ui.tab = "schedule"; ui.schedule.view = "day"; ui.schedule.activeDate = todayStr();
+    ui.schedule.viewYear = now.getFullYear(); ui.schedule.viewMonth = now.getMonth();
     render();
   }
 
@@ -990,15 +1420,15 @@
      Workout Tab — List
   --------------------------------------------------------------------- */
   function renderWorkoutList(){
-    const todayKey = getTodayKey();
+    const todayKey = todayStr();
     const day = state.schedule[todayKey];
     const content = document.getElementById("content");
 
-    if (!day.active){
+    if (!day){
       content.innerHTML = `
         <div class="flex flex-col items-center justify-center text-center py-24 px-6">
           <div class="w-20 h-20 rounded-full bg-zinc-900 flex items-center justify-center mb-5">
-            <i data-lucide="moon" class="w-9 h-9 text-violet-400"></i>
+            <i data-lucide="moon" class="w-9 h-9 text-emerald-400"></i>
           </div>
           <div class="text-xl font-bold text-zinc-100 mb-1.5">${T.restTitle}</div>
           <div class="text-zinc-500">${T.restSubtitle}</div>
@@ -1069,7 +1499,8 @@
     if (!input) return;
     const name = input.value.trim();
     if (!name) { ui.workout.addingExercise = false; render(); return; }
-    const todayKey = getTodayKey();
+    const todayKey = todayStr();
+    if (!state.schedule[todayKey]) state.schedule[todayKey] = { exercises: [] };
     if (!state.schedule[todayKey].exercises.includes(name)) state.schedule[todayKey].exercises.push(name);
     if (!state.exercises.includes(name)) state.exercises.push(name);
     ui.workout.addingExercise = false;
@@ -1435,50 +1866,100 @@
   }
 
   /* ---------------------------------------------------------------------
-     Schedule Tab
+     Schedule Tab — Monthly Calendar
   --------------------------------------------------------------------- */
-  function renderScheduleList(){
+  function renderScheduleCalendar(){
     const content = document.getElementById("content");
-    const chevron = RTL_LANGS.includes(lang) ? "chevron-left" : "chevron-right";
-    const rows = DAY_KEYS.map((key, i) => {
-      const day = state.schedule[key];
-      const count = day.exercises.length;
-      return `
-      <div data-action="open-day" data-day="${key}" class="tap w-full flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-2.5 cursor-pointer">
-        <div>
-          <div class="font-bold text-zinc-100 text-[15px]">${dayName(i)}</div>
-          <div class="text-xs text-zinc-500 mt-0.5">${day.active ? (count + " " + pluralize(lang, count, EX_WORD[lang])) : T.restDay}</div>
-        </div>
-        <div class="flex items-center gap-3.5">
-          ${toggleSwitchHtml(day.active, "toggle-day-active", `data-day="${key}"`)}
-          <i data-lucide="${chevron}" class="w-6 h-6 text-zinc-600"></i>
-        </div>
+    const year = ui.schedule.viewYear, month = ui.schedule.viewMonth;
+    const first = new Date(year, month, 1);
+    const startOffset = (first.getDay() + 6) % 7;
+    const daysInMo = daysInMonth(year, month);
+    const totalCells = Math.ceil((startOffset + daysInMo) / 7) * 7;
+    const todayIso = todayStr();
+    const isRtl = RTL_LANGS.includes(lang);
+
+    const monthLabel = first.toLocaleDateString(LOCALE_TAGS[lang], { month: "long", year: "numeric" });
+    const weekdayHeader = DAY_KEYS.map((k,i) => `<div class="text-center text-[11px] font-bold text-zinc-600 py-1">${shortDayName(i)}</div>`).join("");
+
+    let cells = "";
+    for (let i = 0; i < totalCells; i++){
+      const dayNum = i - startOffset + 1;
+      if (dayNum < 1 || dayNum > daysInMo){ cells += `<div></div>`; continue; }
+      const dateIso = year + "-" + String(month+1).padStart(2,"0") + "-" + String(dayNum).padStart(2,"0");
+      const planned = !!state.schedule[dateIso];
+      const session = state.sessions.find(s => s.date === dateIso);
+      const completed = !!(session && session.sets.length);
+      const isToday = dateIso === todayIso;
+      const dot = completed ? `<div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>` : planned ? `<div class="w-1.5 h-1.5 rounded-full bg-zinc-500"></div>` : `<div class="w-1.5 h-1.5"></div>`;
+      cells += `
+      <button data-action="open-day" data-date="${dateIso}" class="tap aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl ${isToday ? "bg-emerald-500/15 ring-2 ring-emerald-500/50" : planned ? "bg-zinc-900" : ""}">
+        <span class="text-[13px] font-semibold ${isToday ? "text-emerald-400" : planned ? "text-zinc-200" : "text-zinc-600"}">${dayNum}</span>
+        ${dot}
+      </button>`;
+    }
+
+    content.innerHTML = `
+      <div class="flex items-center justify-between mb-4 pt-2">
+        <button data-action="prev-month" class="tap w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-400 active:bg-zinc-800"><i data-lucide="${isRtl?"chevron-right":"chevron-left"}" class="w-5 h-5"></i></button>
+        <div class="font-bold text-zinc-100 text-lg capitalize">${monthLabel}</div>
+        <button data-action="next-month" class="tap w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-400 active:bg-zinc-800"><i data-lucide="${isRtl?"chevron-left":"chevron-right"}" class="w-5 h-5"></i></button>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-1.5">${weekdayHeader}</div>
+      <div class="grid grid-cols-7 gap-1.5">${cells}</div>
+      <button data-action="open-quickfill" class="tap w-full flex items-center justify-center gap-2 mt-6 py-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold text-sm active:bg-zinc-800">
+        <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> ${T.quickFillBtn}
+      </button>
+      <div class="flex items-center gap-4 mt-4 px-1 text-xs text-zinc-500">
+        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-zinc-500"></div> ${T.legendPlanned}</div>
+        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-400"></div> ${T.legendDone}</div>
       </div>`;
-    }).join("");
-    content.innerHTML = `<div class="pt-2">${rows}</div>`;
   }
 
-  function openDay(key){ sound("select"); ui.schedule.activeDay = key; ui.schedule.view = "day"; render(); }
-  function scheduleBack(){ ui.schedule.view = "list"; ui.schedule.activeDay = null; render(); }
+  function prevMonth(){
+    sound("tap");
+    ui.schedule.viewMonth--;
+    if (ui.schedule.viewMonth < 0){ ui.schedule.viewMonth = 11; ui.schedule.viewYear--; }
+    render();
+  }
+  function nextMonth(){
+    sound("tap");
+    ui.schedule.viewMonth++;
+    if (ui.schedule.viewMonth > 11){ ui.schedule.viewMonth = 0; ui.schedule.viewYear++; }
+    render();
+  }
+
+  function openDay(dateIso){ sound("select"); ui.schedule.activeDate = dateIso; ui.schedule.view = "day"; render(); }
+  function scheduleBack(){ ui.schedule.view = "calendar"; ui.schedule.activeDate = null; render(); }
+
+  function fmtScheduleDayTitle(dateIso){
+    const d = new Date(dateIso + "T00:00:00");
+    const str = d.toLocaleDateString(LOCALE_TAGS[lang], { day: "numeric", month: "long", weekday: "short" });
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 
   function toggleDayActive(dayKey){
     sound("tap");
-    state.schedule[dayKey].active = !state.schedule[dayKey].active;
+    if (state.schedule[dayKey]){
+      if (state.schedule[dayKey].exercises.length && !confirm(T.confirmRemoveWorkoutDay)) return;
+      delete state.schedule[dayKey];
+    } else {
+      state.schedule[dayKey] = { exercises: [] };
+    }
     saveState(); render();
   }
 
   function renderScheduleDay(){
-    const key = ui.schedule.activeDay;
+    const key = ui.schedule.activeDate;
     const day = state.schedule[key];
     const content = document.getElementById("content");
 
     const toggleRow = `
       <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-3">
         <div class="font-bold text-zinc-100">${T.workoutDay}</div>
-        ${toggleSwitchHtml(day.active, "toggle-day-active", `data-day="${key}"`)}
+        ${toggleSwitchHtml(!!day, "toggle-day-active", `data-day="${key}"`)}
       </div>`;
 
-    if (!day.active){
+    if (!day){
       content.innerHTML = toggleRow + `<div class="text-center text-zinc-600 text-sm py-10">${T.restDay}</div>`;
       return;
     }
@@ -1520,6 +2001,7 @@
     if (!input) return;
     const name = input.value.trim();
     if (!name) return;
+    if (!state.schedule[dayKey]) state.schedule[dayKey] = { exercises: [] };
     if (!state.schedule[dayKey].exercises.includes(name)) state.schedule[dayKey].exercises.push(name);
     if (!state.exercises.includes(name)) state.exercises.push(name);
     saveState(); sound("select"); render();
@@ -1529,6 +2011,133 @@
   function removeDayExercise(dayKey, index){
     state.schedule[dayKey].exercises.splice(index, 1);
     saveState(); sound("delete"); render();
+  }
+
+  /* ---------------------------------------------------------------------
+     Quick-Fill (bulk weekly pattern applied onto real calendar dates)
+  --------------------------------------------------------------------- */
+  function openQuickFill(){
+    sound("tap");
+    ui.quickFill = { open: true, weekdays: [], exercises: [], newExerciseValue: "", monthsAhead: 1 };
+    renderQuickFillModal();
+  }
+  function closeQuickFill(){
+    ui.quickFill.open = false;
+    document.getElementById("modalHost").innerHTML = "";
+  }
+
+  function toggleQuickFillWeekday(idx){
+    sound("tap");
+    const i = ui.quickFill.weekdays.indexOf(idx);
+    if (i === -1) ui.quickFill.weekdays.push(idx); else ui.quickFill.weekdays.splice(i, 1);
+    renderQuickFillModal();
+  }
+
+  function addQuickFillExercise(){
+    const input = document.getElementById("quickFillExerciseInput");
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) return;
+    if (!ui.quickFill.exercises.includes(name)) ui.quickFill.exercises.push(name);
+    if (!state.exercises.includes(name)) state.exercises.push(name);
+    renderQuickFillModal();
+    requestAnimationFrame(() => { const el = document.getElementById("quickFillExerciseInput"); if (el) el.focus(); });
+  }
+  function removeQuickFillExercise(idx){
+    ui.quickFill.exercises.splice(idx, 1);
+    renderQuickFillModal();
+  }
+
+  function quickFillMonthsDelta(delta){
+    ui.quickFill.monthsAhead = Math.max(1, Math.min(12, ui.quickFill.monthsAhead + delta));
+    sound("step");
+    renderQuickFillModal();
+  }
+
+  function applyQuickFillTemplate(tplId){
+    const tpl = state.dayTemplates.find(t => t.id === tplId);
+    if (!tpl) return;
+    ui.quickFill.exercises = [...tpl.exercises];
+    sound("select");
+    closeTemplatesModal();
+    renderQuickFillModal();
+  }
+
+  function renderQuickFillModal(){
+    const host = document.getElementById("modalHost");
+    const qf = ui.quickFill;
+    const weekdayChips = DAY_KEYS.map((k,i) => {
+      const active = qf.weekdays.includes(i);
+      return `<button data-action="toggle-qf-weekday" data-idx="${i}" class="tap w-11 h-11 rounded-xl flex items-center justify-center text-xs font-bold ${active ? "bg-emerald-500 text-zinc-950" : "bg-zinc-900 border border-zinc-800 text-zinc-400"}">${shortDayName(i)}</button>`;
+    }).join("");
+    const exerciseChips = qf.exercises.map((ex,i) => `
+      <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 mb-2">
+        <span class="flex-1 text-sm font-semibold text-zinc-200 truncate">${escapeHtml(ex)}</span>
+        <button data-action="remove-qf-exercise" data-idx="${i}" class="tap w-7 h-7 rounded-full text-zinc-600 active:text-red-400 flex items-center justify-center shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>`).join("");
+
+    host.innerHTML = `
+    <div class="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+      <div data-action="close-quickfill" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-bold text-lg text-zinc-100">${T.quickFillBtn}</div>
+          <button data-action="close-quickfill" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.quickFillWeekdaysLabel}</div>
+        <div class="flex items-center gap-1.5 mb-5 flex-wrap">${weekdayChips}</div>
+
+        <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.quickFillExercisesLabel}</div>
+        ${exerciseChips}
+        <div class="flex items-center gap-2 mb-2">
+          <input id="quickFillExerciseInput" data-field="quickfill-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" />
+          <button data-action="add-qf-exercise" class="tap w-11 h-11 shrink-0 rounded-xl bg-emerald-500 text-zinc-950 flex items-center justify-center active:bg-emerald-400"><i data-lucide="plus" class="w-5 h-5"></i></button>
+        </div>
+        <button data-action="open-templates" class="tap w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 font-semibold text-xs mb-5 active:bg-zinc-800"><i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i> ${T.quickFillFromTemplate}</button>
+
+        <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.quickFillMonthsLabel}</div>
+        <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 mb-5">
+          <button data-action="qf-months-delta" data-delta="-1" class="tap w-10 h-10 rounded-xl bg-zinc-800 text-lg font-bold flex items-center justify-center active:bg-zinc-700">−</button>
+          <div class="text-lg font-extrabold text-white">${qf.monthsAhead}</div>
+          <button data-action="qf-months-delta" data-delta="1" class="tap w-10 h-10 rounded-xl bg-zinc-800 text-lg font-bold flex items-center justify-center active:bg-zinc-700">+</button>
+        </div>
+
+        <button data-action="confirm-quickfill" class="tap w-full py-4 rounded-2xl bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-lg font-extrabold">${T.quickFillApplyBtn}</button>
+      </div>
+    </div>`;
+    lucide.createIcons();
+  }
+
+  function confirmQuickFill(){
+    const qf = ui.quickFill;
+    if (!qf.weekdays.length || !qf.exercises.length){ showToast(T.quickFillNeedsBoth, "warn"); return; }
+
+    let touchesExisting = false;
+    const targets = [];
+    let cursor = new Date(ui.schedule.viewYear, ui.schedule.viewMonth, 1);
+    for (let m = 0; m < qf.monthsAhead; m++){
+      const y = cursor.getFullYear(), mo = cursor.getMonth();
+      const dim = daysInMonth(y, mo);
+      for (let d = 1; d <= dim; d++){
+        const date = new Date(y, mo, d);
+        const wd = (date.getDay() + 6) % 7;
+        if (qf.weekdays.includes(wd)){
+          const iso = dateStr(date);
+          if (state.schedule[iso] && state.schedule[iso].exercises.length) touchesExisting = true;
+          targets.push(iso);
+        }
+      }
+      cursor = new Date(y, mo + 1, 1);
+    }
+
+    if (touchesExisting && !confirm(T.confirmQuickFillOverwrite)) return;
+
+    targets.forEach(iso => { state.schedule[iso] = { exercises: [...qf.exercises] }; });
+    saveState();
+    sound("select");
+    closeQuickFill();
+    showToast(T.quickFillApplied, "pr");
+    render();
   }
 
   /* ---------------------------------------------------------------------
@@ -1560,8 +2169,8 @@
     const input = document.getElementById("templateNameInput");
     const name = input.value.trim();
     if (!name) return;
-    const key = ui.schedule.activeDay;
-    state.dayTemplates.push({ id: uid(), name, exercises: [...state.schedule[key].exercises] });
+    const key = ui.schedule.activeDate;
+    state.dayTemplates.push({ id: uid(), name, exercises: [...(state.schedule[key] ? state.schedule[key].exercises : [])] });
     saveState(); sound("select");
     closeTemplateModal();
     showToast(T.templateSaved, "pr");
@@ -1599,9 +2208,9 @@
   function applyTemplate(id){
     const tpl = state.dayTemplates.find(t => t.id === id);
     if (!tpl) return;
-    const key = ui.schedule.activeDay;
-    if (state.schedule[key].exercises.length && !confirm(T.confirmApplyTemplate)) return;
-    state.schedule[key].exercises = [...tpl.exercises];
+    const key = ui.schedule.activeDate;
+    if (state.schedule[key] && state.schedule[key].exercises.length && !confirm(T.confirmApplyTemplate)) return;
+    state.schedule[key] = { exercises: [...tpl.exercises] };
     tpl.exercises.forEach(ex => { if (!state.exercises.includes(ex)) state.exercises.push(ex); });
     saveState(); sound("select");
     closeTemplatesModal();
@@ -1622,11 +2231,11 @@
     const context = handle.dataset.context;
     let listRef, commit;
     if (context === "workout"){
-      const key = getTodayKey();
+      const key = todayStr();
       listRef = state.schedule[key].exercises;
       commit = (order) => { state.schedule[key].exercises = order; saveState(); render(); };
     } else if (context === "schedule"){
-      const key = ui.schedule.activeDay;
+      const key = ui.schedule.activeDate;
       listRef = state.schedule[key].exercises;
       commit = (order) => { state.schedule[key].exercises = order; saveState(); render(); };
     } else return;
@@ -1976,36 +2585,49 @@
   function openSettings(){ sound("tap"); ui.settingsOpen = true; renderSettingsModal(); }
   function closeSettings(){ ui.settingsOpen = false; document.getElementById("modalHost").innerHTML = ""; }
 
-  function renderAccountSectionHtml(){
-    if (!sb) return "";
-    if (supaUser){
-      const statusText = syncStatus === "syncing" ? T.syncingLabel : syncStatus === "error" ? T.syncErrorLabel : "";
-      return `
-      <div>
-        <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.accountLabel}</div>
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
-          <div class="flex items-center gap-2.5 mb-3">
-            <div class="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><i data-lucide="check-circle" class="w-4 h-4"></i></div>
-            <div class="min-w-0">
-              <div class="text-xs text-zinc-500">${T.syncedAs}${statusText ? " · " + statusText : ""}</div>
-              <div class="font-semibold text-zinc-200 truncate">${escapeHtml(supaUser.email)}</div>
-            </div>
-          </div>
-          <button data-action="sign-out-cloud" class="tap w-full py-3 rounded-xl bg-zinc-800 text-red-400 font-bold text-sm active:bg-zinc-700">${T.signOutBtn}</button>
-        </div>
-      </div>`;
-    }
-    const isSignup = ui.auth.mode === "signup";
+  function openAvatarPreview(){
+    const img = lastPhotoImage();
+    if (!img){ openSettings(); return; }
+    sound("tap");
+    ui.avatarPreviewOpen = true;
+    renderAvatarPreview();
+  }
+  function closeAvatarPreview(){ ui.avatarPreviewOpen = false; document.getElementById("modalHost").innerHTML = ""; }
+  function renderAvatarPreview(){
+    const img = lastPhotoImage();
+    if (!img) return;
+    const host = document.getElementById("modalHost");
+    host.innerHTML = `
+    <div data-action="close-avatar-preview" class="fixed inset-0 z-40 bg-black/95 flex flex-col">
+      <div class="flex items-center justify-end p-4 safe-top">
+        <button data-action="close-avatar-preview" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-300 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+        <img src="${img}" class="anim-lightbox max-w-full max-h-full object-contain rounded-2xl" />
+      </div>
+    </div>`;
+    lucide.createIcons();
+  }
+
+  function lastPhotoImage(){
+    if (!state.photos.length) return null;
+    return [...state.photos].sort((a,b) => b.date.localeCompare(a.date))[0].image;
+  }
+
+  function renderProfileHeaderHtml(){
+    if (!supaUser) return "";
+    const meta = supaUser.user_metadata || {};
+    const fullName = ((meta.first_name || "") + " " + (meta.last_name || "")).trim();
+    const img = lastPhotoImage();
+    const avatarImg = img ? `<img src="${img}" class="w-full h-full object-cover" />` : `<div class="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><i data-lucide="user" class="w-7 h-7"></i></div>`;
+    const statusText = syncStatus === "syncing" ? T.syncingLabel : syncStatus === "error" ? T.syncErrorLabel : T.syncedAs;
     return `
-    <div>
-      <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.accountLabel}</div>
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 space-y-3">
-        <div class="text-xs text-zinc-500">${T.syncHint}</div>
-        <input id="authEmail" data-field="auth-email" type="email" autocomplete="email" placeholder="${T.emailPlaceholder}" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
-        <input id="authPassword" data-field="auth-password" type="password" autocomplete="${isSignup?"new-password":"current-password"}" placeholder="${T.passwordPlaceholder}" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
-        ${ui.auth.error ? `<div class="text-xs text-red-400">${escapeHtml(ui.auth.error)}</div>` : ""}
-        <button data-action="submit-auth" ${ui.auth.busy?"disabled":""} class="tap w-full py-3.5 rounded-xl bg-emerald-500 active:bg-emerald-400 text-zinc-950 font-extrabold text-[15px] ${ui.auth.busy?"opacity-60":""}">${isSignup ? T.signUpBtn : T.signInBtn}</button>
-        <button data-action="toggle-auth-mode" class="tap w-full text-center text-xs font-semibold text-zinc-500 active:text-zinc-300 py-1">${isSignup ? T.switchToSignIn : T.switchToSignUp}</button>
+    <div class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
+      <div class="w-14 h-14 rounded-full overflow-hidden shrink-0 border-2 border-zinc-800">${avatarImg}</div>
+      <div class="min-w-0 flex-1">
+        <div class="font-bold text-zinc-100 truncate">${escapeHtml(fullName || supaUser.email)}</div>
+        <div class="text-xs text-zinc-500 truncate">${escapeHtml(supaUser.email)}</div>
+        <div class="text-[11px] text-emerald-400 mt-0.5">${statusText}</div>
       </div>
     </div>`;
   }
@@ -2023,7 +2645,7 @@
           <div class="font-bold text-lg text-zinc-100">${T.settingsTitle}</div>
           <button data-action="close-settings" class="tap w-10 h-10 rounded-full bg-zinc-900 text-zinc-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
-        ${renderAccountSectionHtml()}
+        ${renderProfileHeaderHtml()}
         <div>
           <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.languageLabel}</div>
           <select id="languageSelect" data-field="language" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-[15px] text-white outline-none focus:border-emerald-500/50">
@@ -2049,6 +2671,17 @@
             </div>
           </div>
         </div>
+        <div class="space-y-2.5">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
+            <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">${T.termsTitle}</div>
+            <div class="text-xs text-zinc-400 leading-relaxed">${escapeHtml(T.termsBody)}</div>
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
+            <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1.5">${T.contactTitle}</div>
+            <div class="text-xs text-zinc-400 leading-relaxed">${escapeHtml(T.contactBody)} <a href="mailto:ironlog99@gmail.com" class="text-emerald-400 font-semibold">ironlog99@gmail.com</a></div>
+          </div>
+        </div>
+        ${supaUser ? `<button data-action="sign-out-cloud" class="tap w-full py-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 font-extrabold text-[15px] active:bg-red-500/20">${T.signOutBtn}</button>` : ""}
       </div>
     </div>`;
     lucide.createIcons();
@@ -2281,7 +2914,9 @@
       case "delete-set": deleteSet(a.session, a.set); break;
       case "toggle-quick-add": toggleQuickAdd(); break;
       case "quick-add-exercise": quickAddExercise(); break;
-      case "open-day": openDay(a.day); break;
+      case "open-day": openDay(a.date); break;
+      case "prev-month": prevMonth(); break;
+      case "next-month": nextMonth(); break;
       case "toggle-day-active": toggleDayActive(a.day); break;
       case "add-day-exercise": addDayExercise(a.day); break;
       case "remove-day-exercise": removeDayExercise(a.day, parseInt(a.index)); break;
@@ -2290,8 +2925,15 @@
       case "confirm-save-template": confirmSaveTemplate(); break;
       case "open-templates": openTemplates(); break;
       case "close-templates-modal": closeTemplatesModal(); break;
-      case "apply-template": applyTemplate(a.id); break;
+      case "apply-template": ui.quickFill.open ? applyQuickFillTemplate(a.id) : applyTemplate(a.id); break;
       case "delete-template": deleteTemplate(a.id); break;
+      case "open-quickfill": openQuickFill(); break;
+      case "close-quickfill": closeQuickFill(); break;
+      case "toggle-qf-weekday": toggleQuickFillWeekday(parseInt(a.idx)); break;
+      case "add-qf-exercise": addQuickFillExercise(); break;
+      case "remove-qf-exercise": removeQuickFillExercise(parseInt(a.idx)); break;
+      case "qf-months-delta": quickFillMonthsDelta(parseInt(a.delta)); break;
+      case "confirm-quickfill": confirmQuickFill(); break;
       case "open-chart": openChart(a.exercise, a.side); break;
       case "close-chart": closeChart(); break;
       case "open-add-photo": openAddPhoto(); break;
@@ -2302,6 +2944,8 @@
       case "delete-photo": deletePhoto(a.id); break;
       case "open-settings": openSettings(); break;
       case "close-settings": closeSettings(); break;
+      case "open-avatar-preview": openAvatarPreview(); break;
+      case "close-avatar-preview": closeAvatarPreview(); break;
       case "toggle-app-sound": toggleAppSound(); break;
       case "toggle-timer-prompt": toggleTimerPrompt(); break;
       case "settings-timer-delta": settingsTimerDelta(parseInt(a.delta)); break;
@@ -2322,6 +2966,9 @@
       case "close-image-lightbox": closeImageLightbox(); break;
       case "submit-auth": submitAuth(); break;
       case "toggle-auth-mode": toggleAuthMode(); break;
+      case "open-birthdate-picker": openBirthDatePicker(); break;
+      case "close-birthdate-picker": closeBirthDatePicker(); break;
+      case "confirm-birthdate": confirmBirthDate(); break;
       case "sign-out-cloud": signOutCloud(); break;
     }
   });
@@ -2377,10 +3024,11 @@
     if (e.key !== "Enter") return;
     const field = e.target.dataset.field;
     if (field === "weight" || field === "reps" || field === "weightL" || field === "weightR" || field === "repsL" || field === "repsR"){ e.preventDefault(); logSet(); }
-    else if (field === "new-day-exercise"){ e.preventDefault(); addDayExercise(ui.schedule.activeDay); }
+    else if (field === "new-day-exercise"){ e.preventDefault(); addDayExercise(ui.schedule.activeDate); }
+    else if (field === "quickfill-exercise"){ e.preventDefault(); addQuickFillExercise(); }
     else if (field === "quick-add-exercise"){ e.preventDefault(); quickAddExercise(); }
     else if (field === "template-name"){ e.preventDefault(); confirmSaveTemplate(); }
-    else if (field === "auth-email" || field === "auth-password"){ e.preventDefault(); submitAuth(); }
+    else if (field === "auth-email" || field === "auth-password" || field === "auth-password2" || field === "auth-firstname" || field === "auth-lastname" || field === "auth-birthdate"){ e.preventDefault(); submitAuth(); }
   });
 
   /* ---------------------------------------------------------------------
