@@ -33,12 +33,16 @@
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
 
+  /* Prevent iOS long-press text-selection/drag ghosting on buttons & pills (e.g. the floating rest timer) */
+  body, button, [data-action] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
+  input, textarea, select { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type=number] { -moz-appearance: textfield; }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; }
 
-  .safe-top { padding-top: calc(env(safe-area-inset-top) + 14px); }
+  .safe-top { padding-top: calc(env(safe-area-inset-top) + 14px) !important; }
   .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 6px); }
   .safe-toast-top { top: calc(env(safe-area-inset-top) + 12px); }
 
@@ -88,10 +92,10 @@
 
   .chart-cursor-line { pointer-events: none; }
 
-  @keyframes slide-in-right { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-  @keyframes slide-in-left { from { transform: translateX(-28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-  .slide-right { animation: slide-in-right 0.32s cubic-bezier(.22,1,.36,1); }
-  .slide-left { animation: slide-in-left 0.32s cubic-bezier(.22,1,.36,1); }
+  @keyframes slide-in-right { from { transform: translateX(56px) scale(0.98); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+  @keyframes slide-in-left { from { transform: translateX(-56px) scale(0.98); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+  .slide-right { animation: slide-in-right 0.38s cubic-bezier(.22,1,.36,1); }
+  .slide-left { animation: slide-in-left 0.38s cubic-bezier(.22,1,.36,1); }
   [dir="rtl"] .slide-right { animation-name: slide-in-left; }
   [dir="rtl"] .slide-left { animation-name: slide-in-right; }
 
@@ -203,10 +207,11 @@
       newTemplateNamePlaceholder:"Например: День ног", templateSaved:"Шаблон сохранён", templateApplied:"Шаблон применён",
       maxWeightLabel:"МАКС. ВЕС", repsShort:"повт.", notEnoughData:"Недостаточно данных", progressTitle:"ПРОГРЕСС ~1ПМ",
       noRecords:"Логируйте подходы, чтобы увидеть рекорды",
+      searchExercisePlaceholder:"Поиск упражнения", noSearchResults:"Совпадений не найдено",
       addPhotoEntry:"Добавить фото-запись", newEntryTitle:"Новая запись", weightKgLabel:"ВЕС (КГ)", dateLabel:"ДАТА",
       saveBtn:"Сохранить", choosePhoto:"Выбрать фото", startPhotoJournal:"Начните вести фото-дневник прогресса",
       deleteEntryConfirm:"Удалить эту запись?", chooseFirst:"Выберите фото", enterWeight:"Введите вес",
-      settingsTitle:"Настройки", soundLabel:"Звуки нажатий", timerSection:"ТАЙМЕР ОТДЫХА", askDurationLabel:"Спрашивать длительность",
+      settingsTitle:"Настройки", soundLabel:"Звуки нажатий", soundVolumeLabel:"Громкость звука", timerSection:"ТАЙМЕР ОТДЫХА", timerEnabledLabel:"Таймер отдыха", askDurationLabel:"Спрашивать длительность",
       defaultDurationLabel:"Длительность по умолчанию", languageLabel:"ЯЗЫК",
       accountLabel:"АККАУНТ", emailPlaceholder:"Email", passwordPlaceholder:"Пароль", signInBtn:"Войти", signUpBtn:"Зарегистрироваться",
       signOutBtn:"Выйти", switchToSignUp:"Нет аккаунта? Зарегистрироваться", switchToSignIn:"Уже есть аккаунт? Войти",
@@ -221,9 +226,12 @@
       noRestBtn:"Без отдыха", startBtn:"Начать",
       restLabel:"ОТДЫХ", skipBtn:"Пропустить", collapseBtn:"Свернуть", restOverToast:"Отдых окончен",
       photoLoadFailed:"Не удалось загрузить фото", confirmDeleteSession:"Удалить этот день тренировки? Это нельзя отменить.",
-      today:"Сегодня", yesterday:"Вчера", volumeLabel:"объём",
+      today:"Сегодня", yesterday:"Вчера", volumeLabel:"объём", lastSessionLabel:"Прошлый раз",
       termsTitle:"Условия использования", termsBody:"Приложение предоставляется «как есть». Ваши данные тренировок хранятся в вашем аккаунте и используются только для работы Iron Log.",
-      contactTitle:"Нашли баг или есть пожелание?", contactBody:"Напишите нам на"
+      contactTitle:"Нашли баг или есть пожелание?", contactBody:"Напишите нам на",
+      cancelBtn:"Отмена", deleteAccountBtn:"Удалить аккаунт",
+      deleteAccountWarning:"Это навсегда удалит все ваши тренировки, фото и расписание. Введите пароль, чтобы подтвердить.",
+      deleteAccountConfirmBtn:"Удалить навсегда", deleteAccountWrongPassword:"Неверный пароль"
     },
     en: {
       navWorkout:"Workout", navSchedule:"Schedule", navRecords:"Records", navPhotos:"Photos",
@@ -250,10 +258,11 @@
       newTemplateNamePlaceholder:"E.g.: Leg Day", templateSaved:"Template saved", templateApplied:"Template applied",
       maxWeightLabel:"MAX WEIGHT", repsShort:"reps", notEnoughData:"Not enough data", progressTitle:"~1RM PROGRESS",
       noRecords:"Log sets to see your records",
+      searchExercisePlaceholder:"Search exercise", noSearchResults:"No matches found",
       addPhotoEntry:"Add photo entry", newEntryTitle:"New entry", weightKgLabel:"WEIGHT (KG)", dateLabel:"DATE",
       saveBtn:"Save", choosePhoto:"Choose photo", startPhotoJournal:"Start your progress photo journal",
       deleteEntryConfirm:"Delete this entry?", chooseFirst:"Choose a photo", enterWeight:"Enter weight",
-      settingsTitle:"Settings", soundLabel:"Tap sounds", timerSection:"REST TIMER", askDurationLabel:"Ask for duration",
+      settingsTitle:"Settings", soundLabel:"Tap sounds", soundVolumeLabel:"Sound volume", timerSection:"REST TIMER", timerEnabledLabel:"Rest timer", askDurationLabel:"Ask for duration",
       defaultDurationLabel:"Default duration", languageLabel:"LANGUAGE",
       accountLabel:"ACCOUNT", emailPlaceholder:"Email", passwordPlaceholder:"Password", signInBtn:"Sign in", signUpBtn:"Sign up",
       signOutBtn:"Sign out", switchToSignUp:"No account? Sign up", switchToSignIn:"Already have an account? Sign in",
@@ -268,9 +277,12 @@
       noRestBtn:"No rest", startBtn:"Start",
       restLabel:"REST", skipBtn:"Skip", collapseBtn:"Collapse", restOverToast:"Rest over",
       photoLoadFailed:"Couldn't load photo", confirmDeleteSession:"Delete this whole workout day? This can't be undone.",
-      today:"Today", yesterday:"Yesterday", volumeLabel:"volume",
+      today:"Today", yesterday:"Yesterday", volumeLabel:"volume", lastSessionLabel:"Last time",
       termsTitle:"Terms of use", termsBody:"The app is provided as is. Your workout data is stored in your account and used only to run Iron Log.",
-      contactTitle:"Found a bug or have a suggestion?", contactBody:"Email us at"
+      contactTitle:"Found a bug or have a suggestion?", contactBody:"Email us at",
+      cancelBtn:"Cancel", deleteAccountBtn:"Delete account",
+      deleteAccountWarning:"This permanently deletes all your workouts, photos and schedule. Enter your password to confirm.",
+      deleteAccountConfirmBtn:"Delete permanently", deleteAccountWrongPassword:"Incorrect password"
     },
     es: {
       navWorkout:"Entreno", navSchedule:"Horario", navRecords:"Récords", navPhotos:"Fotos",
@@ -297,10 +309,11 @@
       newTemplateNamePlaceholder:"Ej.: Día de piernas", templateSaved:"Plantilla guardada", templateApplied:"Plantilla aplicada",
       maxWeightLabel:"PESO MÁX.", repsShort:"reps.", notEnoughData:"Datos insuficientes", progressTitle:"PROGRESO ~1RM",
       noRecords:"Registra series para ver tus récords",
+      searchExercisePlaceholder:"Buscar ejercicio", noSearchResults:"Sin resultados",
       addPhotoEntry:"Añadir foto", newEntryTitle:"Nueva entrada", weightKgLabel:"PESO (KG)", dateLabel:"FECHA",
       saveBtn:"Guardar", choosePhoto:"Elegir foto", startPhotoJournal:"Empieza tu diario de fotos de progreso",
       deleteEntryConfirm:"¿Eliminar esta entrada?", chooseFirst:"Elige una foto", enterWeight:"Introduce el peso",
-      settingsTitle:"Ajustes", soundLabel:"Sonidos al tocar", timerSection:"TEMPORIZADOR DE DESCANSO", askDurationLabel:"Preguntar duración",
+      settingsTitle:"Ajustes", soundLabel:"Sonidos al tocar", soundVolumeLabel:"Volumen del sonido", timerSection:"TEMPORIZADOR DE DESCANSO", timerEnabledLabel:"Temporizador de descanso", askDurationLabel:"Preguntar duración",
       defaultDurationLabel:"Duración predeterminada", languageLabel:"IDIOMA",
       accountLabel:"CUENTA", emailPlaceholder:"Email", passwordPlaceholder:"Contraseña", signInBtn:"Iniciar sesión", signUpBtn:"Registrarse",
       signOutBtn:"Cerrar sesión", switchToSignUp:"¿Sin cuenta? Regístrate", switchToSignIn:"¿Ya tienes cuenta? Inicia sesión",
@@ -315,9 +328,12 @@
       noRestBtn:"Sin descanso", startBtn:"Empezar",
       restLabel:"DESCANSO", skipBtn:"Saltar", collapseBtn:"Contraer", restOverToast:"Descanso terminado",
       photoLoadFailed:"No se pudo cargar la foto", confirmDeleteSession:"¿Eliminar todo este día de entreno? No se puede deshacer.",
-      today:"Hoy", yesterday:"Ayer", volumeLabel:"volumen",
+      today:"Hoy", yesterday:"Ayer", volumeLabel:"volumen", lastSessionLabel:"Última vez",
       termsTitle:"Condiciones de uso", termsBody:"La aplicación se ofrece tal cual. Tus datos de entrenamiento se guardan en tu cuenta y solo se usan para el funcionamiento de Iron Log.",
-      contactTitle:"¿Encontraste un error o tienes una sugerencia?", contactBody:"Escríbenos a"
+      contactTitle:"¿Encontraste un error o tienes una sugerencia?", contactBody:"Escríbenos a",
+      cancelBtn:"Cancelar", deleteAccountBtn:"Eliminar cuenta",
+      deleteAccountWarning:"Esto eliminará permanentemente todos tus entrenamientos, fotos y horario. Introduce tu contraseña para confirmar.",
+      deleteAccountConfirmBtn:"Eliminar definitivamente", deleteAccountWrongPassword:"Contraseña incorrecta"
     },
     fr: {
       navWorkout:"Entraînement", navSchedule:"Planning", navRecords:"Records", navPhotos:"Photos",
@@ -344,10 +360,11 @@
       newTemplateNamePlaceholder:"Ex. : Jour de jambes", templateSaved:"Modèle enregistré", templateApplied:"Modèle appliqué",
       maxWeightLabel:"POIDS MAX", repsShort:"réps.", notEnoughData:"Données insuffisantes", progressTitle:"PROGRÈS ~1RM",
       noRecords:"Enregistrez des séries pour voir vos records",
+      searchExercisePlaceholder:"Rechercher un exercice", noSearchResults:"Aucun résultat",
       addPhotoEntry:"Ajouter une photo", newEntryTitle:"Nouvelle entrée", weightKgLabel:"POIDS (KG)", dateLabel:"DATE",
       saveBtn:"Enregistrer", choosePhoto:"Choisir une photo", startPhotoJournal:"Commencez votre journal photo de progrès",
       deleteEntryConfirm:"Supprimer cette entrée ?", chooseFirst:"Choisissez une photo", enterWeight:"Entrez le poids",
-      settingsTitle:"Réglages", soundLabel:"Sons au toucher", timerSection:"MINUTEUR DE REPOS", askDurationLabel:"Demander la durée",
+      settingsTitle:"Réglages", soundLabel:"Sons au toucher", soundVolumeLabel:"Volume du son", timerSection:"MINUTEUR DE REPOS", timerEnabledLabel:"Minuteur de repos", askDurationLabel:"Demander la durée",
       defaultDurationLabel:"Durée par défaut", languageLabel:"LANGUE",
       accountLabel:"COMPTE", emailPlaceholder:"Email", passwordPlaceholder:"Mot de passe", signInBtn:"Se connecter", signUpBtn:"S'inscrire",
       signOutBtn:"Se déconnecter", switchToSignUp:"Pas de compte ? S'inscrire", switchToSignIn:"Déjà un compte ? Se connecter",
@@ -362,9 +379,12 @@
       noRestBtn:"Pas de repos", startBtn:"Démarrer",
       restLabel:"REPOS", skipBtn:"Passer", collapseBtn:"Réduire", restOverToast:"Repos terminé",
       photoLoadFailed:"Échec du chargement de la photo", confirmDeleteSession:"Supprimer toute cette journée d'entraînement ? Action irréversible.",
-      today:"Aujourd'hui", yesterday:"Hier", volumeLabel:"volume",
+      today:"Aujourd'hui", yesterday:"Hier", volumeLabel:"volume", lastSessionLabel:"Dernière fois",
       termsTitle:"Conditions d'utilisation", termsBody:"L'application est fournie telle quelle. Vos données d'entraînement sont stockées dans votre compte et utilisées uniquement pour le fonctionnement d'Iron Log.",
-      contactTitle:"Vous avez trouvé un bug ou une suggestion ?", contactBody:"Écrivez-nous à"
+      contactTitle:"Vous avez trouvé un bug ou une suggestion ?", contactBody:"Écrivez-nous à",
+      cancelBtn:"Annuler", deleteAccountBtn:"Supprimer le compte",
+      deleteAccountWarning:"Cela supprimera définitivement tous vos entraînements, photos et plannings. Entrez votre mot de passe pour confirmer.",
+      deleteAccountConfirmBtn:"Supprimer définitivement", deleteAccountWrongPassword:"Mot de passe incorrect"
     },
     de: {
       navWorkout:"Training", navSchedule:"Plan", navRecords:"Rekorde", navPhotos:"Fotos",
@@ -391,10 +411,11 @@
       newTemplateNamePlaceholder:"Z. B.: Beintag", templateSaved:"Vorlage gespeichert", templateApplied:"Vorlage angewendet",
       maxWeightLabel:"MAX. GEWICHT", repsShort:"Wdh.", notEnoughData:"Nicht genug Daten", progressTitle:"~1RM VERLAUF",
       noRecords:"Erfasse Sätze, um deine Rekorde zu sehen",
+      searchExercisePlaceholder:"Übung suchen", noSearchResults:"Keine Treffer",
       addPhotoEntry:"Fotoeintrag hinzufügen", newEntryTitle:"Neuer Eintrag", weightKgLabel:"GEWICHT (KG)", dateLabel:"DATUM",
       saveBtn:"Speichern", choosePhoto:"Foto auswählen", startPhotoJournal:"Starte dein Fortschritts-Fototagebuch",
       deleteEntryConfirm:"Diesen Eintrag löschen?", chooseFirst:"Wähle ein Foto", enterWeight:"Gewicht eingeben",
-      settingsTitle:"Einstellungen", soundLabel:"Tippgeräusche", timerSection:"PAUSEN-TIMER", askDurationLabel:"Dauer abfragen",
+      settingsTitle:"Einstellungen", soundLabel:"Tippgeräusche", soundVolumeLabel:"Lautstärke", timerSection:"PAUSEN-TIMER", timerEnabledLabel:"Pausen-Timer", askDurationLabel:"Dauer abfragen",
       defaultDurationLabel:"Standarddauer", languageLabel:"SPRACHE",
       accountLabel:"KONTO", emailPlaceholder:"E-Mail", passwordPlaceholder:"Passwort", signInBtn:"Anmelden", signUpBtn:"Registrieren",
       signOutBtn:"Abmelden", switchToSignUp:"Kein Konto? Registrieren", switchToSignIn:"Schon ein Konto? Anmelden",
@@ -409,9 +430,12 @@
       noRestBtn:"Keine Pause", startBtn:"Starten",
       restLabel:"PAUSE", skipBtn:"Überspringen", collapseBtn:"Einklappen", restOverToast:"Pause vorbei",
       photoLoadFailed:"Foto konnte nicht geladen werden", confirmDeleteSession:"Diesen ganzen Trainingstag löschen? Kann nicht rückgängig gemacht werden.",
-      today:"Heute", yesterday:"Gestern", volumeLabel:"Volumen",
+      today:"Heute", yesterday:"Gestern", volumeLabel:"Volumen", lastSessionLabel:"Letztes Mal",
       termsTitle:"Nutzungsbedingungen", termsBody:"Die App wird wie besehen bereitgestellt. Deine Trainingsdaten werden in deinem Konto gespeichert und nur für den Betrieb von Iron Log verwendet.",
-      contactTitle:"Fehler gefunden oder einen Vorschlag?", contactBody:"Schreib uns an"
+      contactTitle:"Fehler gefunden oder einen Vorschlag?", contactBody:"Schreib uns an",
+      cancelBtn:"Abbrechen", deleteAccountBtn:"Konto löschen",
+      deleteAccountWarning:"Dadurch werden alle deine Trainings, Fotos und Pläne dauerhaft gelöscht. Gib dein Passwort ein, um zu bestätigen.",
+      deleteAccountConfirmBtn:"Endgültig löschen", deleteAccountWrongPassword:"Falsches Passwort"
     },
     ja: {
       navWorkout:"トレーニング", navSchedule:"予定", navRecords:"記録", navPhotos:"写真",
@@ -438,10 +462,11 @@
       newTemplateNamePlaceholder:"例：脚の日", templateSaved:"テンプレートを保存しました", templateApplied:"テンプレートを適用しました",
       maxWeightLabel:"最大重量", repsShort:"回", notEnoughData:"データが不足しています", progressTitle:"~1RM の推移",
       noRecords:"セットを記録すると記録が表示されます",
+      searchExercisePlaceholder:"種目を検索", noSearchResults:"見つかりませんでした",
       addPhotoEntry:"写真を追加", newEntryTitle:"新しい記録", weightKgLabel:"体重 (KG)", dateLabel:"日付",
       saveBtn:"保存", choosePhoto:"写真を選択", startPhotoJournal:"経過写真の記録を始めましょう",
       deleteEntryConfirm:"この記録を削除しますか？", chooseFirst:"写真を選択してください", enterWeight:"体重を入力してください",
-      settingsTitle:"設定", soundLabel:"タップ音", timerSection:"休憩タイマー", askDurationLabel:"毎回時間を確認する",
+      settingsTitle:"設定", soundLabel:"タップ音", soundVolumeLabel:"音量", timerSection:"休憩タイマー", timerEnabledLabel:"休憩タイマー", askDurationLabel:"毎回時間を確認する",
       defaultDurationLabel:"デフォルトの時間", languageLabel:"言語",
       accountLabel:"アカウント", emailPlaceholder:"メール", passwordPlaceholder:"パスワード", signInBtn:"ログイン", signUpBtn:"新規登録",
       signOutBtn:"ログアウト", switchToSignUp:"アカウントをお持ちでない方は新規登録", switchToSignIn:"アカウントをお持ちの方はログイン",
@@ -456,9 +481,12 @@
       noRestBtn:"休憩なし", startBtn:"開始",
       restLabel:"休憩中", skipBtn:"スキップ", collapseBtn:"閉じる", restOverToast:"休憩終了",
       photoLoadFailed:"写真を読み込めませんでした", confirmDeleteSession:"このトレーニング日を削除しますか？元に戻せません。",
-      today:"今日", yesterday:"昨日", volumeLabel:"総量",
+      today:"今日", yesterday:"昨日", volumeLabel:"総量", lastSessionLabel:"前回",
       termsTitle:"利用規約", termsBody:"本アプリは現状のまま提供されます。トレーニングデータはアカウントに保存され、Iron Logの動作のみに使用されます。",
-      contactTitle:"バグを見つけた、またはご要望がありますか？", contactBody:"こちらまでご連絡ください："
+      contactTitle:"バグを見つけた、またはご要望がありますか？", contactBody:"こちらまでご連絡ください：",
+      cancelBtn:"キャンセル", deleteAccountBtn:"アカウントを削除",
+      deleteAccountWarning:"すべてのトレーニング、写真、予定が完全に削除されます。確認のためパスワードを入力してください。",
+      deleteAccountConfirmBtn:"完全に削除", deleteAccountWrongPassword:"パスワードが違います"
     },
     he: {
       navWorkout:"אימון", navSchedule:"לוח זמנים", navRecords:"שיאים", navPhotos:"תמונות",
@@ -485,10 +513,11 @@
       newTemplateNamePlaceholder:"לדוגמה: יום רגליים", templateSaved:"התבנית נשמרה", templateApplied:"התבנית הוחלה",
       maxWeightLabel:"משקל מקס'", repsShort:"חזרות", notEnoughData:"אין מספיק נתונים", progressTitle:"התקדמות ~1RM",
       noRecords:"רשום סטים כדי לראות את השיאים שלך",
+      searchExercisePlaceholder:"חיפוש תרגיל", noSearchResults:"לא נמצאו תוצאות",
       addPhotoEntry:"הוסף תמונה", newEntryTitle:"רשומה חדשה", weightKgLabel:"משקל (ק\"ג)", dateLabel:"תאריך",
       saveBtn:"שמור", choosePhoto:"בחר תמונה", startPhotoJournal:"התחל יומן תמונות התקדמות",
       deleteEntryConfirm:"למחוק את הרשומה הזו?", chooseFirst:"בחר תמונה", enterWeight:"הזן משקל",
-      settingsTitle:"הגדרות", soundLabel:"צלילי הקשה", timerSection:"טיימר מנוחה", askDurationLabel:"שאל לגבי משך הזמן",
+      settingsTitle:"הגדרות", soundLabel:"צלילי הקשה", soundVolumeLabel:"עוצמת קול", timerSection:"טיימר מנוחה", timerEnabledLabel:"טיימר מנוחה", askDurationLabel:"שאל לגבי משך הזמן",
       defaultDurationLabel:"משך זמן ברירת מחדל", languageLabel:"שפה",
       accountLabel:"חשבון", emailPlaceholder:"אימייל", passwordPlaceholder:"סיסמה", signInBtn:"התחבר", signUpBtn:"הרשמה",
       signOutBtn:"התנתק", switchToSignUp:"אין חשבון? הרשמה", switchToSignIn:"כבר יש חשבון? התחבר",
@@ -503,9 +532,12 @@
       noRestBtn:"בלי מנוחה", startBtn:"התחל",
       restLabel:"מנוחה", skipBtn:"דלג", collapseBtn:"כווץ", restOverToast:"המנוחה נגמרה",
       photoLoadFailed:"טעינת התמונה נכשלה", confirmDeleteSession:"למחוק את כל יום האימון הזה? לא ניתן לבטל.",
-      today:"היום", yesterday:"אתמול", volumeLabel:"נפח",
+      today:"היום", yesterday:"אתמול", volumeLabel:"נפח", lastSessionLabel:"בפעם הקודמת",
       termsTitle:"תנאי שימוש", termsBody:"האפליקציה מסופקת כפי שהיא. נתוני האימונים שלך נשמרים בחשבון שלך ומשמשים רק להפעלת Iron Log.",
-      contactTitle:"מצאת באג או יש לך הצעה?", contactBody:"כתבו לנו לכתובת"
+      contactTitle:"מצאת באג או יש לך הצעה?", contactBody:"כתבו לנו לכתובת",
+      cancelBtn:"ביטול", deleteAccountBtn:"מחק חשבון",
+      deleteAccountWarning:"פעולה זו תמחק לצמיתות את כל האימונים, התמונות והלוח זמנים שלך. הזן את הסיסמה שלך לאישור.",
+      deleteAccountConfirmBtn:"מחק לצמיתות", deleteAccountWrongPassword:"סיסמה שגויה"
     },
     ar: {
       navWorkout:"التمرين", navSchedule:"الجدول", navRecords:"الأرقام القياسية", navPhotos:"الصور",
@@ -532,10 +564,11 @@
       newTemplateNamePlaceholder:"مثال: يوم الأرجل", templateSaved:"تم حفظ القالب", templateApplied:"تم تطبيق القالب",
       maxWeightLabel:"أقصى وزن", repsShort:"تكرار", notEnoughData:"بيانات غير كافية", progressTitle:"تقدّم ~1RM",
       noRecords:"سجّل مجموعات لرؤية أرقامك القياسية",
+      searchExercisePlaceholder:"البحث عن تمرين", noSearchResults:"لا توجد نتائج",
       addPhotoEntry:"إضافة صورة", newEntryTitle:"إدخال جديد", weightKgLabel:"الوزن (كجم)", dateLabel:"التاريخ",
       saveBtn:"حفظ", choosePhoto:"اختر صورة", startPhotoJournal:"ابدأ مذكرات صور التقدم",
       deleteEntryConfirm:"حذف هذا الإدخال؟", chooseFirst:"اختر صورة", enterWeight:"أدخل الوزن",
-      settingsTitle:"الإعدادات", soundLabel:"أصوات النقر", timerSection:"مؤقت الراحة", askDurationLabel:"السؤال عن المدة",
+      settingsTitle:"الإعدادات", soundLabel:"أصوات النقر", soundVolumeLabel:"مستوى الصوت", timerSection:"مؤقت الراحة", timerEnabledLabel:"مؤقت الراحة", askDurationLabel:"السؤال عن المدة",
       defaultDurationLabel:"المدة الافتراضية", languageLabel:"اللغة",
       accountLabel:"الحساب", emailPlaceholder:"البريد الإلكتروني", passwordPlaceholder:"كلمة المرور", signInBtn:"تسجيل الدخول", signUpBtn:"إنشاء حساب",
       signOutBtn:"تسجيل الخروج", switchToSignUp:"لا يوجد حساب؟ أنشئ حسابًا", switchToSignIn:"لديك حساب بالفعل؟ سجّل الدخول",
@@ -550,9 +583,12 @@
       noRestBtn:"بدون راحة", startBtn:"ابدأ",
       restLabel:"راحة", skipBtn:"تخطي", collapseBtn:"طي", restOverToast:"انتهت الراحة",
       photoLoadFailed:"تعذّر تحميل الصورة", confirmDeleteSession:"حذف يوم التمرين هذا بالكامل؟ لا يمكن التراجع.",
-      today:"اليوم", yesterday:"أمس", volumeLabel:"الحجم",
+      today:"اليوم", yesterday:"أمس", volumeLabel:"الحجم", lastSessionLabel:"المرة الماضية",
       termsTitle:"شروط الاستخدام", termsBody:"يتم توفير التطبيق كما هو. يتم تخزين بيانات تمارينك في حسابك واستخدامها فقط لتشغيل Iron Log.",
-      contactTitle:"وجدت خطأ أو لديك اقتراح؟", contactBody:"راسلنا على"
+      contactTitle:"وجدت خطأ أو لديك اقتراح؟", contactBody:"راسلنا على",
+      cancelBtn:"إلغاء", deleteAccountBtn:"حذف الحساب",
+      deleteAccountWarning:"سيؤدي هذا إلى حذف جميع تمارينك وصورك وجدولك نهائيًا. أدخل كلمة المرور للتأكيد.",
+      deleteAccountConfirmBtn:"حذف نهائيًا", deleteAccountWrongPassword:"كلمة مرور غير صحيحة"
     }
   };
 
@@ -572,6 +608,7 @@
   --------------------------------------------------------------------- */
   const STORAGE_KEY = "ironlog_v3";
   const SOUND_KEY = "ironlog_v3_sound";
+  const SOUND_VOLUME_KEY = "ironlog_v3_sound_volume";
   const TIMER_KEY = "ironlog_v3_timer";
   const LANG_KEY = "ironlog_v3_lang";
 
@@ -600,7 +637,7 @@
       exerciseImages: {},
       exerciseNotes: {},
       dayTemplates: [],
-      timerSettings: { defaultSeconds: 90, skipPrompt: false }
+      timerSettings: { defaultSeconds: 90, skipPrompt: false, enabled: true }
     };
   }
 
@@ -610,7 +647,8 @@
     if (!parsed.exerciseNotes) parsed.exerciseNotes = {};
     if (!parsed.dayTemplates) parsed.dayTemplates = [];
     if (!parsed.photos) parsed.photos = [];
-    if (!parsed.timerSettings) parsed.timerSettings = { defaultSeconds: 90, skipPrompt: false };
+    if (!parsed.timerSettings) parsed.timerSettings = { defaultSeconds: 90, skipPrompt: false, enabled: true };
+    if (typeof parsed.timerSettings.enabled !== "boolean") parsed.timerSettings.enabled = true;
     // Discard any legacy weekday-keyed schedule (mon/tue/...) from the old weekly-template system.
     DAY_KEYS.forEach(k => { if (parsed.schedule[k] && "active" in parsed.schedule[k]) delete parsed.schedule[k]; });
     return parsed;
@@ -661,18 +699,21 @@
     workout: { view: "list", activeExercise: null, rpeOpen: false, splitSides: false, addingExercise: false },
     schedule: { view: "calendar", activeDate: null, viewYear: new Date().getFullYear(), viewMonth: new Date().getMonth() },
     quickFill: { open: false, weekdays: [], exercises: [], newExerciseValue: "", monthsAhead: 1 },
-    photos: { adding: false, lightboxId: null, draftImage: null, weightDraft: "", dateDraft: "" },
+    photos: { adding: false, lightboxId: null, draftImage: null, weightDraft: "", dateDraft: "", viewYear: new Date().getFullYear(), viewMonth: new Date().getMonth() },
     settingsOpen: false,
     pickerOpen: false, pickerMinutes: 1, pickerSeconds: 30,
     pendingImageExercise: null,
     weight: 20, reps: 5, weightL: 20, weightR: 20, repsL: 5, repsR: 5, rpe: 7,
     soundEnabled: localStorage.getItem(SOUND_KEY) !== "off",
+    soundVolume: (() => { const v = parseFloat(localStorage.getItem(SOUND_VOLUME_KEY)); return isNaN(v) ? 1 : Math.min(1, Math.max(0, v)); })(),
     timer: { active: false, remaining: 0, total: 0, endsAt: 0, expanded: false },
     imageLightbox: null,
     noteEditing: false,
     templatesOpen: false,
     auth: { mode: "signin", busy: false, error: "" },
-    gate: { bannerIndex: 0, birthDate: null, birthDatePick: null }
+    gate: { bannerIndex: 0, birthDate: null, birthDatePick: null },
+    records: { search: "" },
+    deleteAccount: { open: false, busy: false, error: "" }
   };
 
   const TAB_ORDER = ["workout", "schedule", "records", "photos"];
@@ -1131,18 +1172,19 @@
   }
 
   function playTone(freq, duration, type, gain, delay, glideTo){
-    if (!ui.soundEnabled) return;
+    if (!ui.soundEnabled || ui.soundVolume <= 0) return;
     try {
       const ctx = getAudioCtx();
       if (!ctx) return;
       const t0 = ctx.currentTime + (delay || 0);
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
+      const scaledGain = Math.max(0.0001, gain * ui.soundVolume);
       osc.type = type || "sine";
       osc.frequency.setValueAtTime(freq, t0);
       if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + duration);
       gainNode.gain.setValueAtTime(0.0001, t0);
-      gainNode.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
+      gainNode.gain.exponentialRampToValueAtTime(scaledGain, t0 + 0.008);
       gainNode.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
       osc.connect(gainNode).connect(ctx.destination);
       osc.start(t0);
@@ -1175,6 +1217,11 @@
     localStorage.setItem(SOUND_KEY, ui.soundEnabled ? "on" : "off");
     if (ui.soundEnabled) sound("tap");
     renderSettingsModal();
+  }
+
+  function setSoundVolume(value){
+    ui.soundVolume = Math.min(1, Math.max(0, value));
+    localStorage.setItem(SOUND_VOLUME_KEY, String(ui.soundVolume));
   }
 
   /* ---------------------------------------------------------------------
@@ -1328,7 +1375,7 @@
 
   function renderFab(){
     const host = document.getElementById("fabHost");
-    if (ui.timer.active){ host.innerHTML = ""; return; }
+    if (ui.timer.active || !state.timerSettings.enabled){ host.innerHTML = ""; return; }
     const offset = navHeight() + 16;
     const dirClass = RTL_LANGS.includes(lang) ? "left-4" : "right-4";
     host.innerHTML = `
@@ -1398,10 +1445,15 @@
     ui.workout.view = "list";
     ui.schedule.view = "calendar";
     render();
+    slideContent(newIdx > oldIdx ? "forward" : "back");
+  }
+
+  function slideContent(dir){
     const content = document.getElementById("content");
+    if (!content) return;
     content.classList.remove("slide-right", "slide-left");
     void content.offsetWidth;
-    content.classList.add(newIdx > oldIdx ? "slide-right" : "slide-left");
+    content.classList.add(dir === "forward" ? "slide-right" : "slide-left");
   }
 
   function navBack(){
@@ -1447,7 +1499,7 @@
         </div>`;
     } else {
       rows = `<div class="pt-2 drag-list">` + day.exercises.map((ex, i) => {
-        const setsCount = today ? today.sets.filter(s => s.exercise === ex).length : 0;
+        const setsCount = today ? new Set(today.sets.filter(s => s.exercise === ex).map(s => s.groupId || s.id)).size : 0;
         const best = bestFor(ex, null) || bestFor(ex, "left") || bestFor(ex, "right");
         const subtitle = setsCount
           ? setsCount + " " + pluralize(lang, setsCount, SETS_WORD[lang]) + " · " + T.today.toLowerCase()
@@ -1476,10 +1528,11 @@
 
     const addForm = ui.workout.addingExercise ? `
       <div class="anim-pop flex items-center gap-2 mt-1">
-        <input id="quickAddExerciseInput" data-field="quick-add-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" list="knownExercisesList" />
+        <div class="relative flex-1 min-w-0">
+          <input id="quickAddExerciseInput" data-field="quick-add-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" autocomplete="off" />
+        </div>
         <button data-action="quick-add-exercise" class="tap w-14 h-14 shrink-0 rounded-2xl bg-emerald-500 text-zinc-950 flex items-center justify-center active:bg-emerald-400"><i data-lucide="check" class="w-6 h-6"></i></button>
-      </div>
-      <datalist id="knownExercisesList">${state.exercises.map(e => `<option value="${escapeHtml(e)}"></option>`).join("")}</datalist>` : `
+      </div>` : `
       <button data-action="toggle-quick-add" class="tap w-full flex items-center justify-center gap-2 border-2 border-dashed border-zinc-800 rounded-2xl py-4 mt-1 text-zinc-500 font-bold active:bg-zinc-900/50">
         <i data-lucide="plus" class="w-5 h-5"></i> ${T.addExerciseBtn}
       </button>`;
@@ -1491,7 +1544,41 @@
     sound("tap");
     ui.workout.addingExercise = !ui.workout.addingExercise;
     render();
-    if (ui.workout.addingExercise) requestAnimationFrame(() => { const el = document.getElementById("quickAddExerciseInput"); if (el) el.focus(); });
+    if (ui.workout.addingExercise){
+      wireExerciseAutocomplete("quickAddExerciseInput");
+      requestAnimationFrame(() => { const el = document.getElementById("quickAddExerciseInput"); if (el) el.focus(); });
+    }
+  }
+
+  /* iOS Safari doesn't render native <datalist> suggestions, so we build our own dropdown. */
+  function wireExerciseAutocomplete(inputId){
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const wrapper = input.parentElement;
+    let box = null;
+    function closeBox(){ if (box){ box.remove(); box = null; } }
+    function openBox(){
+      closeBox();
+      const q = input.value.trim().toLowerCase();
+      if (!q) return;
+      const matches = state.exercises.filter(e => e.toLowerCase().includes(q) && e.toLowerCase() !== q).slice(0, 6);
+      if (!matches.length) return;
+      box = document.createElement("div");
+      box.className = "absolute left-0 right-0 top-full mt-1.5 z-10 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl";
+      box.innerHTML = matches.map(m => `<button type="button" data-suggestion="${escapeHtml(m)}" class="tap w-full text-start px-4 py-3 text-[15px] text-zinc-200 active:bg-zinc-800 border-b border-zinc-800 last:border-0">${escapeHtml(m)}</button>`).join("");
+      wrapper.appendChild(box);
+      box.querySelectorAll("[data-suggestion]").forEach(btn => {
+        btn.addEventListener("mousedown", (e) => e.preventDefault());
+        btn.addEventListener("click", () => {
+          input.value = btn.dataset.suggestion;
+          closeBox();
+          input.focus();
+        });
+      });
+    }
+    input.addEventListener("input", openBox);
+    input.addEventListener("focus", openBox);
+    input.addEventListener("blur", () => setTimeout(closeBox, 150));
   }
 
   function quickAddExercise(){
@@ -1524,9 +1611,10 @@
     ui.weightR = lastR ? lastR.weight : 20; ui.repsR = lastR ? lastR.reps : 5;
     ui.rpe = (last && last.rpe != null) ? last.rpe : 7;
     render();
+    slideContent("forward");
   }
 
-  function workoutBack(){ ui.workout.view = "list"; ui.workout.activeExercise = null; render(); }
+  function workoutBack(){ ui.workout.view = "list"; ui.workout.activeExercise = null; render(); slideContent("back"); }
 
   function renderWorkoutLogging(){
     const ex = ui.workout.activeExercise;
@@ -1635,9 +1723,9 @@
           <div class="text-[11px] font-bold tracking-wider text-sky-400 mb-2 text-center">${T.leftLabel}</div>
           <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.weightLabel}</div>
           <div class="flex items-center gap-1.5 mb-2">
-            <button data-action="step-weight-side" data-side="L" data-delta="-2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
-            <input id="weightInputL" data-field="weightL" type="number" inputmode="decimal" step="2.5" value="${ui.weightL}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
-            <button data-action="step-weight-side" data-side="L" data-delta="2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+            <button data-action="step-weight-side" data-side="L" data-delta="-0.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="weightInputL" data-field="weightL" type="number" inputmode="decimal" step="0.5" value="${ui.weightL}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
+            <button data-action="step-weight-side" data-side="L" data-delta="0.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
           </div>
           <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.repsLabel}</div>
           <div class="flex items-center gap-1.5">
@@ -1650,9 +1738,9 @@
           <div class="text-[11px] font-bold tracking-wider text-sky-400 mb-2 text-center">${T.rightLabel}</div>
           <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.weightLabel}</div>
           <div class="flex items-center gap-1.5 mb-2">
-            <button data-action="step-weight-side" data-side="R" data-delta="-2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
-            <input id="weightInputR" data-field="weightR" type="number" inputmode="decimal" step="2.5" value="${ui.weightR}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
-            <button data-action="step-weight-side" data-side="R" data-delta="2.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+            <button data-action="step-weight-side" data-side="R" data-delta="-0.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="weightInputR" data-field="weightR" type="number" inputmode="decimal" step="0.5" value="${ui.weightR}" class="w-14 text-center bg-transparent text-xl font-extrabold text-white outline-none" />
+            <button data-action="step-weight-side" data-side="R" data-delta="0.5" class="tap flex-1 h-11 rounded-xl bg-zinc-800 text-lg font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
           </div>
           <div class="text-[10px] font-bold tracking-wider text-zinc-500 mb-1 text-center">${T.repsLabel}</div>
           <div class="flex items-center gap-1.5">
@@ -1666,9 +1754,9 @@
         <div>
           <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2.5 px-1">${T.weightLabel}</div>
           <div class="flex items-center gap-3">
-            <button data-action="step-weight" data-delta="-2.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
-            <input id="weightInput" data-field="weight" type="number" inputmode="decimal" step="2.5" value="${ui.weight}" class="flex-1 min-w-0 w-0 text-center bg-transparent text-5xl font-extrabold text-white outline-none" />
-            <button data-action="step-weight" data-delta="2.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
+            <button data-action="step-weight" data-delta="-0.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">−</button>
+            <input id="weightInput" data-field="weight" type="number" inputmode="decimal" step="0.5" value="${ui.weight}" class="flex-1 min-w-0 w-0 text-center bg-transparent text-5xl font-extrabold text-white outline-none" />
+            <button data-action="step-weight" data-delta="0.5" class="tap w-16 h-16 rounded-2xl bg-zinc-800 text-3xl font-bold text-zinc-200 flex items-center justify-center active:bg-zinc-700">+</button>
           </div>
         </div>
         <div class="mt-5">
@@ -1692,7 +1780,38 @@
         <button data-action="log-set" class="tap glow-pulse w-full py-5 rounded-[28px] bg-emerald-500 active:bg-emerald-400 text-zinc-950 text-xl font-extrabold flex items-center justify-center gap-2">
           <i data-lucide="check-circle-2" class="w-7 h-7"></i> ${T.logSetBtn}
         </button>
+      </div>
+      ${lastSessionSummaryHtml(ex)}`;
+  }
+
+  function lastSessionSummaryHtml(ex){
+    const todayKey = todayStr();
+    const past = allSets().filter(s => s.exercise === ex && s.date < todayKey);
+    if (!past.length) return "";
+    const lastDate = past.reduce((max, s) => s.date > max ? s.date : max, past[0].date);
+    const sets = past.filter(s => s.date === lastDate).sort((a,b) => (a.time||"").localeCompare(b.time||""));
+    const groups = [];
+    const groupIndex = {};
+    sets.forEach(s => {
+      const gid = s.groupId || s.id;
+      if (!(gid in groupIndex)){ groupIndex[gid] = groups.length; groups.push([]); }
+      groups[groupIndex[gid]].push(s);
+    });
+    const rows = groups.map((items, i) => {
+      const parts = items.map(s => {
+        const sideTag = s.side ? (s.side === "left" ? T.leftLabel : T.rightLabel) + " " : "";
+        return `${sideTag}${s.weight}кг × ${s.reps}`;
+      }).join(" · ");
+      return `<div class="flex items-center justify-between text-sm py-1.5 ${i>0?'border-t border-zinc-800':''}">
+        <span class="text-zinc-500">${T.setWord} ${i+1}</span>
+        <span class="text-zinc-200 font-semibold">${parts}</span>
       </div>`;
+    }).join("");
+    return `
+    <div class="anim-pop mt-5 bg-zinc-900/60 border border-zinc-800 rounded-2xl px-4 py-3.5">
+      <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-1">${T.lastSessionLabel} · ${fmtDateLabel(lastDate)}</div>
+      ${rows}
+    </div>`;
   }
 
   function toggleSplitSides(){
@@ -1784,6 +1903,7 @@
     render();
     toastMsgs.forEach((msg, i) => setTimeout(() => showToast(msg, "pr"), i * 400));
 
+    if (!state.timerSettings.enabled) return;
     if (state.timerSettings.skipPrompt) startRestTimer(state.timerSettings.defaultSeconds);
     else openTimerPicker();
   }
@@ -1928,8 +2048,8 @@
     render();
   }
 
-  function openDay(dateIso){ sound("select"); ui.schedule.activeDate = dateIso; ui.schedule.view = "day"; render(); }
-  function scheduleBack(){ ui.schedule.view = "calendar"; ui.schedule.activeDate = null; render(); }
+  function openDay(dateIso){ sound("select"); ui.schedule.activeDate = dateIso; ui.schedule.view = "day"; render(); slideContent("forward"); }
+  function scheduleBack(){ ui.schedule.view = "calendar"; ui.schedule.activeDate = null; render(); slideContent("back"); }
 
   function fmtScheduleDayTitle(dateIso){
     const d = new Date(dateIso + "T00:00:00");
@@ -1988,12 +2108,14 @@
 
     const addForm = `
       <div class="flex items-center gap-2 mt-3">
-        <input id="newDayExerciseInput" data-field="new-day-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" list="knownExercisesList" />
+        <div class="relative flex-1 min-w-0">
+          <input id="newDayExerciseInput" data-field="new-day-exercise" type="text" placeholder="${T.exerciseNamePlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" maxlength="40" autocomplete="off" />
+        </div>
         <button data-action="add-day-exercise" data-day="${key}" class="tap w-14 h-14 shrink-0 rounded-2xl bg-emerald-500 text-zinc-950 flex items-center justify-center active:bg-emerald-400"><i data-lucide="plus" class="w-6 h-6"></i></button>
-      </div>
-      <datalist id="knownExercisesList">${state.exercises.map(e => `<option value="${escapeHtml(e)}"></option>`).join("")}</datalist>`;
+      </div>`;
 
     content.innerHTML = toggleRow + templateRow + rowsHtml + addForm;
+    wireExerciseAutocomplete("newDayExerciseInput");
   }
 
   function addDayExercise(dayKey){
@@ -2369,12 +2491,30 @@
   }
 
   function renderRecords(){
-    const names = allLoggedExerciseNames();
+    const allNames = allLoggedExerciseNames();
     const content = document.getElementById("content");
-    if (!names.length){
+    if (!allNames.length){
       content.innerHTML = `<div class="text-center py-20 text-zinc-600"><i data-lucide="trophy" class="w-10 h-10 mx-auto mb-3 opacity-40"></i><div class="text-sm">${T.noRecords}</div></div>`;
       return;
     }
+    const searchHtml = `
+      <div class="relative mb-4">
+        <i data-lucide="search" class="w-[18px] h-[18px] text-zinc-500 absolute top-1/2 -translate-y-1/2 start-4 pointer-events-none"></i>
+        <input id="recordsSearchInput" type="text" value="${escapeHtml(ui.records.search)}" placeholder="${T.searchExercisePlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl ps-11 pe-4 py-3.5 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-emerald-500/50" />
+      </div>`;
+    content.innerHTML = `<div class="pt-4">${searchHtml}<div id="recordsList">${buildRecordsListHtml(allNames)}</div></div>`;
+    lucide.createIcons();
+    const input = document.getElementById("recordsSearchInput");
+    input.addEventListener("input", () => {
+      ui.records.search = input.value;
+      const filtered = allNames.filter(n => n.toLowerCase().includes(ui.records.search.trim().toLowerCase()));
+      document.getElementById("recordsList").innerHTML = buildRecordsListHtml(filtered);
+      lucide.createIcons();
+    });
+  }
+
+  function buildRecordsListHtml(names){
+    if (!names.length) return `<div class="text-center text-zinc-600 text-sm py-10">${T.noSearchResults}</div>`;
     let html = "";
     names.forEach(ex => {
       const sides = exerciseSides(ex);
@@ -2418,7 +2558,7 @@
         <div class="${split?'grid grid-cols-2 gap-3':''}">${blocks}</div>
       </div>`;
     });
-    content.innerHTML = `<div class="pt-4">${html}</div>`;
+    return html || `<div class="text-center text-zinc-600 text-sm py-10">${T.noSearchResults}</div>`;
   }
 
   function openChart(ex, side){
@@ -2454,24 +2594,73 @@
   --------------------------------------------------------------------- */
   function renderPhotos(){
     const content = document.getElementById("content");
-    const photos = [...state.photos].sort((a,b) => b.date.localeCompare(a.date));
     const addBtn = `
       <button data-action="open-add-photo" class="tap w-full flex items-center justify-center gap-2.5 border-2 border-dashed border-zinc-800 rounded-3xl py-7 mb-4 text-zinc-400 font-bold text-[15px] active:bg-zinc-900/50">
         <i data-lucide="image-plus" class="w-6 h-6"></i> ${T.addPhotoEntry}
       </button>`;
-    if (!photos.length){
+
+    if (!state.photos.length){
       content.innerHTML = addBtn + `<div class="text-center text-zinc-600 text-sm py-10">${T.startPhotoJournal}</div>`;
       return;
     }
-    const grid = photos.map(p => `
-      <button data-action="open-lightbox" data-id="${p.id}" class="tap relative aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900">
-        <img src="${p.image}" class="w-full h-full object-cover" />
-        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-6 text-start">
-          <div class="text-white font-bold text-sm">${p.weightKg}кг</div>
-          <div class="text-zinc-300 text-[11px]">${fmtDateLabel(p.date)}</div>
-        </div>
-      </button>`).join("");
-    content.innerHTML = addBtn + `<div class="grid grid-cols-2 gap-3">${grid}</div>`;
+
+    // Most recent photo per date, for the calendar thumbnails.
+    const byDate = {};
+    [...state.photos].sort((a,b) => a.date.localeCompare(b.date)).forEach(p => { byDate[p.date] = p; });
+
+    const year = ui.photos.viewYear, month = ui.photos.viewMonth;
+    const first = new Date(year, month, 1);
+    const startOffset = (first.getDay() + 6) % 7;
+    const daysInMo = daysInMonth(year, month);
+    const totalCells = Math.ceil((startOffset + daysInMo) / 7) * 7;
+    const todayIso = todayStr();
+    const isRtl = RTL_LANGS.includes(lang);
+    const monthLabel = first.toLocaleDateString(LOCALE_TAGS[lang], { month: "long", year: "numeric" });
+    const weekdayHeader = DAY_KEYS.map((k,i) => `<div class="text-center text-[11px] font-bold text-zinc-600 py-1">${shortDayName(i)}</div>`).join("");
+
+    let cells = "";
+    for (let i = 0; i < totalCells; i++){
+      const dayNum = i - startOffset + 1;
+      if (dayNum < 1 || dayNum > daysInMo){ cells += `<div></div>`; continue; }
+      const dateIso = year + "-" + String(month+1).padStart(2,"0") + "-" + String(dayNum).padStart(2,"0");
+      const isToday = dateIso === todayIso;
+      const p = byDate[dateIso];
+      if (p){
+        cells += `
+        <button data-action="open-lightbox" data-id="${p.id}" class="tap aspect-square rounded-xl overflow-hidden relative ${isToday ? "ring-2 ring-emerald-500/60" : ""}">
+          <img src="${p.image}" class="w-full h-full object-cover" />
+          <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white bg-black/60 rounded px-1">${dayNum}</span>
+        </button>`;
+      } else {
+        cells += `
+        <div class="aspect-square flex items-center justify-center rounded-xl ${isToday ? "bg-emerald-500/15 ring-2 ring-emerald-500/50" : ""}">
+          <span class="text-[13px] font-semibold ${isToday ? "text-emerald-400" : "text-zinc-700"}">${dayNum}</span>
+        </div>`;
+      }
+    }
+
+    content.innerHTML = `
+      ${addBtn}
+      <div class="flex items-center justify-between mb-4">
+        <button data-action="prev-photos-month" class="tap w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-400 active:bg-zinc-800"><i data-lucide="${isRtl?"chevron-right":"chevron-left"}" class="w-5 h-5"></i></button>
+        <div class="font-bold text-zinc-100 text-lg capitalize">${monthLabel}</div>
+        <button data-action="next-photos-month" class="tap w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-400 active:bg-zinc-800"><i data-lucide="${isRtl?"chevron-left":"chevron-right"}" class="w-5 h-5"></i></button>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-1.5">${weekdayHeader}</div>
+      <div class="grid grid-cols-7 gap-1.5">${cells}</div>`;
+  }
+
+  function prevPhotosMonth(){
+    sound("tap");
+    ui.photos.viewMonth--;
+    if (ui.photos.viewMonth < 0){ ui.photos.viewMonth = 11; ui.photos.viewYear--; }
+    renderPhotos(); lucide.createIcons();
+  }
+  function nextPhotosMonth(){
+    sound("tap");
+    ui.photos.viewMonth++;
+    if (ui.photos.viewMonth > 11){ ui.photos.viewMonth = 0; ui.photos.viewYear++; }
+    renderPhotos(); lucide.createIcons();
   }
 
   function openAddPhoto(){
@@ -2560,15 +2749,21 @@
     if (!p) return;
     const host = document.getElementById("modalHost");
     host.innerHTML = `
-    <div class="fixed inset-0 z-40 bg-black/95 flex flex-col">
-      <div class="flex items-center justify-between p-4 safe-top">
-        <div><div class="text-white font-bold">${p.weightKg}кг</div><div class="text-zinc-400 text-xs">${fmtDateLabel(p.date)}</div></div>
-        <div class="flex items-center gap-2">
-          <button data-action="delete-photo" data-id="${p.id}" class="tap w-11 h-11 rounded-full bg-zinc-900 text-red-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-          <button data-action="close-lightbox" class="tap w-11 h-11 rounded-full bg-zinc-900 text-zinc-300 flex items-center justify-center active:bg-zinc-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+    <div class="fixed inset-0 z-40 flex items-center justify-center p-6">
+      <div data-action="close-lightbox" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="anim-pop relative w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+        <div class="relative bg-zinc-900">
+          <img src="${p.image}" class="w-full max-h-[55vh] object-contain" />
+          <button data-action="close-lightbox" class="tap absolute top-3 end-3 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center active:bg-black/80"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3.5">
+          <div>
+            <div class="text-white font-bold">${p.weightKg}кг</div>
+            <div class="text-zinc-500 text-xs">${fmtDateLabel(p.date)}</div>
+          </div>
+          <button data-action="delete-photo" data-id="${p.id}" class="tap w-10 h-10 rounded-full bg-zinc-900 text-red-400 flex items-center justify-center active:bg-zinc-800"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
       </div>
-      <div class="flex-1 flex items-center justify-center p-4"><img src="${p.image}" class="max-w-full max-h-full object-contain rounded-2xl" /></div>
     </div>`;
     lucide.createIcons();
   }
@@ -2621,12 +2816,13 @@
     const img = lastPhotoImage();
     const avatarImg = img ? `<img src="${img}" class="w-full h-full object-cover" />` : `<div class="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><i data-lucide="user" class="w-7 h-7"></i></div>`;
     const statusText = syncStatus === "syncing" ? T.syncingLabel : syncStatus === "error" ? T.syncErrorLabel : T.syncedAs;
+
     return `
     <div class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
       <div class="w-14 h-14 rounded-full overflow-hidden shrink-0 border-2 border-zinc-800">${avatarImg}</div>
       <div class="min-w-0 flex-1">
         <div class="font-bold text-zinc-100 truncate">${escapeHtml(fullName || supaUser.email)}</div>
-        <div class="text-xs text-zinc-500 truncate">${escapeHtml(supaUser.email)}</div>
+        ${fullName ? `<div class="text-xs text-zinc-500 truncate">${escapeHtml(supaUser.email)}</div>` : ""}
         <div class="text-[11px] text-emerald-400 mt-0.5">${statusText}</div>
       </div>
     </div>`;
@@ -2647,17 +2843,29 @@
         </div>
         ${renderProfileHeaderHtml()}
         <div>
-          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.languageLabel}</div>
+          <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.languageLabel}${lang !== "en" ? ` <span class="text-zinc-600">/ Language</span>` : ""}</div>
           <select id="languageSelect" data-field="language" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-[15px] text-white outline-none focus:border-emerald-500/50">
             ${langOptions}
           </select>
         </div>
-        <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
-          <div class="flex items-center gap-2.5 font-semibold text-zinc-200"><i data-lucide="volume-2" class="w-5 h-5 text-zinc-400"></i> ${T.soundLabel}</div>
-          ${toggleSwitchHtml(ui.soundEnabled, "toggle-app-sound")}
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5 font-semibold text-zinc-200"><i data-lucide="volume-2" class="w-5 h-5 text-zinc-400"></i> ${T.soundLabel}</div>
+            ${toggleSwitchHtml(ui.soundEnabled, "toggle-app-sound")}
+          </div>
+          <div class="flex items-center gap-3">
+            <i data-lucide="volume-1" class="w-4 h-4 text-zinc-600 shrink-0"></i>
+            <input id="soundVolumeSlider" data-field="sound-volume" type="range" min="0" max="100" step="5" value="${Math.round(ui.soundVolume*100)}" class="w-full accent-emerald-500" />
+            <i data-lucide="volume-2" class="w-4 h-4 text-zinc-600 shrink-0"></i>
+          </div>
         </div>
         <div>
           <div class="text-[11px] font-bold tracking-wider text-zinc-500 mb-2 px-1">${T.timerSection}</div>
+          <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 ${state.timerSettings.enabled ? "mb-2.5" : ""}">
+            <div class="font-semibold text-zinc-200">${T.timerEnabledLabel}</div>
+            ${toggleSwitchHtml(state.timerSettings.enabled, "toggle-timer-enabled")}
+          </div>
+          ${state.timerSettings.enabled ? `
           <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 mb-2.5">
             <div class="font-semibold text-zinc-200">${T.askDurationLabel}</div>
             ${toggleSwitchHtml(!state.timerSettings.skipPrompt, "toggle-timer-prompt")}
@@ -2666,10 +2874,10 @@
             <div class="text-xs text-zinc-500 mb-2.5">${T.defaultDurationLabel}</div>
             <div class="flex items-center justify-between">
               <button data-action="settings-timer-delta" data-delta="-15" class="tap w-12 h-12 rounded-xl bg-zinc-800 text-xl font-bold flex items-center justify-center active:bg-zinc-700">−</button>
-              <div class="text-2xl font-extrabold text-white tabular-nums">${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}</div>
+              <div id="settingsTimerDurationText" class="text-2xl font-extrabold text-white tabular-nums">${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}</div>
               <button data-action="settings-timer-delta" data-delta="15" class="tap w-12 h-12 rounded-xl bg-zinc-800 text-xl font-bold flex items-center justify-center active:bg-zinc-700">+</button>
             </div>
-          </div>
+          </div>` : ""}
         </div>
         <div class="space-y-2.5">
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4">
@@ -2682,8 +2890,10 @@
           </div>
         </div>
         ${supaUser ? `<button data-action="sign-out-cloud" class="tap w-full py-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 font-extrabold text-[15px] active:bg-red-500/20">${T.signOutBtn}</button>` : ""}
+        ${supaUser ? `<button data-action="open-delete-account" class="tap w-full py-3 text-zinc-600 font-semibold text-xs active:text-red-400">${T.deleteAccountBtn}</button>` : ""}
       </div>
-    </div>`;
+    </div>
+    ${ui.deleteAccount.open ? renderDeleteAccountConfirmHtml() : ""}`;
     lucide.createIcons();
   }
 
@@ -2691,9 +2901,82 @@
     state.timerSettings.skipPrompt = !state.timerSettings.skipPrompt;
     saveState(); sound("tap"); renderSettingsModal();
   }
+  function toggleTimerEnabled(){
+    state.timerSettings.enabled = !state.timerSettings.enabled;
+    saveState(); sound("tap");
+    if (!state.timerSettings.enabled && ui.timer.active) skipActiveTimer();
+    renderSettingsModal();
+    renderFab();
+  }
   function settingsTimerDelta(delta){
     state.timerSettings.defaultSeconds = Math.max(15, Math.min(600, state.timerSettings.defaultSeconds + delta));
-    saveState(); sound("step"); renderSettingsModal();
+    saveState(); sound("step");
+    const el = document.getElementById("settingsTimerDurationText");
+    if (el){
+      const mm = Math.floor(state.timerSettings.defaultSeconds / 60);
+      const ss = state.timerSettings.defaultSeconds % 60;
+      el.textContent = String(mm).padStart(2,"0") + ":" + String(ss).padStart(2,"0");
+      pulse(el);
+    } else renderSettingsModal();
+  }
+
+  /* ---------------------------------------------------------------------
+     Delete Account
+  --------------------------------------------------------------------- */
+  function openDeleteAccount(){
+    sound("tap");
+    ui.deleteAccount = { open: true, busy: false, error: "" };
+    renderSettingsModal();
+  }
+  function closeDeleteAccount(){
+    ui.deleteAccount = { open: false, busy: false, error: "" };
+    renderSettingsModal();
+  }
+
+  function renderDeleteAccountConfirmHtml(){
+    const d = ui.deleteAccount;
+    return `
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div data-action="close-delete-account" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="anim-sheet relative w-full sm:max-w-sm bg-zinc-950 border border-red-500/30 rounded-t-3xl sm:rounded-3xl p-5 pb-8 space-y-4">
+        <div class="flex items-center gap-2.5 text-red-400"><i data-lucide="triangle-alert" class="w-5 h-5"></i><div class="font-bold text-lg">${T.deleteAccountBtn}</div></div>
+        <div class="text-sm text-zinc-400 leading-relaxed">${escapeHtml(T.deleteAccountWarning)}</div>
+        <input id="deleteAccountPasswordInput" type="password" placeholder="${T.passwordPlaceholder}" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-[15px] text-white placeholder-zinc-600 outline-none focus:border-red-500/50" />
+        ${d.error ? `<div class="text-sm text-red-400 font-semibold">${escapeHtml(d.error)}</div>` : ""}
+        <div class="flex gap-2.5">
+          <button data-action="close-delete-account" class="tap flex-1 py-4 rounded-2xl bg-zinc-800 text-zinc-300 font-bold text-[15px] active:bg-zinc-700">${T.cancelBtn}</button>
+          <button data-action="confirm-delete-account" ${d.busy ? "disabled" : ""} class="tap flex-1 py-4 rounded-2xl bg-red-500 text-white font-extrabold text-[15px] active:bg-red-400 disabled:opacity-60">${T.deleteAccountConfirmBtn}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function confirmDeleteAccount(){
+    if (!sb || !supaUser) return;
+    const password = document.getElementById("deleteAccountPasswordInput").value || "";
+    if (!password){ ui.deleteAccount.error = T.authFillBoth; renderSettingsModal(); return; }
+    ui.deleteAccount.busy = true; ui.deleteAccount.error = ""; renderSettingsModal();
+    try {
+      const { error: authError } = await sb.auth.signInWithPassword({ email: supaUser.email, password });
+      if (authError) throw new Error(T.deleteAccountWrongPassword);
+      const { error: fnError } = await sb.functions.invoke("delete-account", { method: "POST" });
+      if (fnError) throw fnError;
+      const userId = supaUser.id;
+      await sb.auth.signOut();
+      supaUser = null;
+      state = defaultState();
+      localStorage.removeItem(STORAGE_KEY);
+      ui.deleteAccount = { open: false, busy: false, error: "" };
+      ui.settingsOpen = false;
+      document.getElementById("modalHost").innerHTML = "";
+      sound("delete");
+      render();
+      renderGate();
+    } catch(e){
+      ui.deleteAccount.busy = false;
+      ui.deleteAccount.error = e.message || String(e);
+      renderSettingsModal();
+    }
   }
 
   /* ---------------------------------------------------------------------
@@ -2780,6 +3063,7 @@
   function clearRestTimerInterval(){ if (timerIntervalId){ clearInterval(timerIntervalId); timerIntervalId = null; } }
 
   function manualStartTimer(){
+    if (!state.timerSettings.enabled) return;
     sound("tap");
     if (state.timerSettings.skipPrompt) startRestTimer(state.timerSettings.defaultSeconds);
     else openTimerPicker();
@@ -2942,13 +3226,19 @@
       case "open-lightbox": openLightbox(a.id); break;
       case "close-lightbox": closeLightbox(); break;
       case "delete-photo": deletePhoto(a.id); break;
+      case "prev-photos-month": prevPhotosMonth(); break;
+      case "next-photos-month": nextPhotosMonth(); break;
       case "open-settings": openSettings(); break;
       case "close-settings": closeSettings(); break;
       case "open-avatar-preview": openAvatarPreview(); break;
       case "close-avatar-preview": closeAvatarPreview(); break;
       case "toggle-app-sound": toggleAppSound(); break;
       case "toggle-timer-prompt": toggleTimerPrompt(); break;
+      case "toggle-timer-enabled": toggleTimerEnabled(); break;
       case "settings-timer-delta": settingsTimerDelta(parseInt(a.delta)); break;
+      case "open-delete-account": openDeleteAccount(); break;
+      case "close-delete-account": closeDeleteAccount(); break;
+      case "confirm-delete-account": confirmDeleteAccount(); break;
       case "start-timer": startTimerFromPicker(); break;
       case "skip-timer": skipTimerFromPicker(); break;
       case "expand-timer": expandTimer(); break;
@@ -2995,6 +3285,7 @@
     }
     else if (field === "photo-weight") ui.photos.weightDraft = e.target.value;
     else if (field === "photo-date") ui.photos.dateDraft = e.target.value;
+    else if (field === "sound-volume") setSoundVolume(parseInt(e.target.value) / 100);
   });
 
   app.addEventListener("change", (e) => {
@@ -3017,6 +3308,8 @@
     } else if (e.target.id === "languageSelect"){
       setLanguage(e.target.value);
       if (ui.settingsOpen) renderSettingsModal();
+    } else if (e.target.id === "soundVolumeSlider"){
+      sound("tap");
     }
   });
 
